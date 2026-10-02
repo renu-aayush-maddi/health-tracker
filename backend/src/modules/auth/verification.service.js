@@ -14,19 +14,36 @@ const hashCode = (userId, code) => createHash('sha256').update(`${userId}:${code
  * because emails can arrive late or out of order. Sending happens in the background so the
  * response doesn't wait on the mail server; failures are logged and the user can resend.
  */
-export async function issueCode(user) {
+export async function issueCode(user, { waitForDelivery = false } = {}) {
   const code = String(randomInt(0, 1_000_000)).padStart(6, '0');
   await codes.insertCode({
     userId: user.id,
     codeHash: hashCode(user.id, code),
     ttlMinutes: CODE_TTL_MINUTES,
   });
-  sendVerificationCodeEmail({
+  const sending = sendVerificationCodeEmail({
     to: user.email,
     name: user.name,
     code,
     expiresInMinutes: CODE_TTL_MINUTES,
-  }).catch((err) => console.error('Failed to send verification email:', err.message));
+  });
+
+  // Registration doesn't wait on the mail provider. "Resend" does, so a broken mail setup is
+  // reported to the person instead of leaving them on the code screen with nothing arriving.
+  if (!waitForDelivery) {
+    sending.catch((err) => console.error('Failed to send verification email:', err.message));
+    return;
+  }
+  try {
+    await sending;
+  } catch (err) {
+    console.error('Failed to send verification email:', err.message);
+    throw new HttpError(
+      502,
+      'EMAIL_SEND_FAILED',
+      "We couldn't send the email just now. Please try again in a minute.",
+    );
+  }
 }
 
 /** "Resend code" with a cooldown, so the address can't be flooded. */
@@ -40,7 +57,7 @@ export async function resendCode(user) {
       `Please wait ${wait} seconds before requesting another code.`,
     );
   }
-  await issueCode(user);
+  await issueCode(user, { waitForDelivery: true });
 }
 
 /** On login: make sure an unverified user has a usable code waiting in their inbox. */

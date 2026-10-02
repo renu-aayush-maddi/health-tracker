@@ -759,3 +759,16 @@ Supabase ──fetchFullBackup──► Excel ──AES-256-GCM (BACKUP_ENCRYPTI
 The SMTP transport is pooled, with short timeouts (10 s connect/greeting, 20 s socket) and **one automatic retry** on a fresh connection. Nodemailer's defaults (2 min connect, 10 min idle socket) could let a stalled connection hold a verification email for minutes. The connection is checked and warmed at startup ("SMTP ready" in the logs). Each send logs the time until the server accepted it and the server's reply, never the recipient or content. Once Gmail has accepted a message (`250 OK`), any further delay happens in delivery or spam filtering on the recipient's side.
 
 Gmail SMTP suits personal use. For production volume and deliverability, a transactional email provider with SPF/DKIM on your own domain (e.g. Brevo, Resend, Postmark) is recommended; it only needs a different `SMTP_URL` and `MAIL_FROM`.
+
+### Email transport (revised)
+
+The mailer supports four transports behind one `mailer.send()`: `console` (dev), `brevo` and `resend` (HTTPS APIs on port 443), and `smtp`.
+
+**Why HTTPS APIs are the production default.** Render blocks outbound SMTP ports 25/465/587 on free instances, at the firewall — the connection is dropped, not refused, so an SMTP attempt hangs until it times out. On that deployment the logs showed both halves of the failure: `connect ENETUNREACH 2404:6800:…:465` (no outbound IPv6 route, DNS returned AAAA first) and then `Connection timeout` on IPv4 (the port block). Neither is fixable from inside the app.
+
+- **IPv4 preference:** `dns.setDefaultResultOrder('ipv4first')` at server startup, so no outbound connection tries an unreachable IPv6 address first.
+- **HTTP providers:** one POST, 15 s timeout, retried once on a network error, 429 or 5xx; a 4xx (bad key, unverified sender) fails immediately, because retrying cannot help. The provider's error text is logged — it never contains recipient or health data — while the API returns a generic message.
+- **Startup check:** `verifyMailer()` logs the active provider and validates the Brevo key against `GET /v3/account`, so a bad key is visible in the deploy log rather than at the first signup.
+- **Failure is surfaced:** registration still doesn't wait on the mail provider, but `POST /auth/resend-verification` does and returns **502 `EMAIL_SEND_FAILED`** if delivery fails, instead of reporting success while nothing arrives.
+
+**Origin rejections are now logged.** `requireSameOrigin` prints the received Origin and the configured `APP_ORIGIN` when it blocks a request, and the startup log prints `APP_ORIGIN`. A misconfigured value previously produced unexplained sub-millisecond 403s on `POST /auth/register` and `/auth/verify-email` with nothing in the logs.

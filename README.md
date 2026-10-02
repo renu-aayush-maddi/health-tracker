@@ -91,7 +91,7 @@ CI (`.github/workflows/ci.yml`) runs lint, all unit/integration tests against a 
 1. Push this repository to GitHub, then in Render choose **New → Blueprint** and select the repo. `render.yaml` creates:
    - `health-tracker-api`, a Node web service that runs migrations on start, with health check `/api/health`
    - `health-tracker`, the static site, which rewrites `/api/*` to the API and everything else to `index.html`
-2. Fill in the secret env vars on the API service: `DATABASE_URL`, `DATABASE_SSL_CA`, `APP_ORIGIN` (the static site's URL, e.g. `https://health-tracker.onrender.com`), `MAIL_FROM`, `SMTP_URL` (e.g. `smtps://user:pass@smtp.example.com:465`), and `CLOUDINARY_URL` for file uploads (Cloudinary console → API Keys: `cloudinary://<key>:<secret>@<cloud_name>`).
+2. Fill in the secret env vars on the API service: `DATABASE_URL`, `DATABASE_SSL_CA`, `APP_ORIGIN` (the **static site's** URL, e.g. `https://health-tracker.onrender.com` — the API rejects requests from any other origin), `MAIL_FROM` and `MAIL_API_KEY` (see **Email** below), and `CLOUDINARY_URL` for file uploads.
 3. If Render gives the API a different hostname than `health-tracker-api.onrender.com`, update the rewrite destination in `render.yaml`.
 
 ### 3. Verify after the first deploy
@@ -102,6 +102,28 @@ CI (`.github/workflows/ci.yml`) runs lint, all unit/integration tests against a 
 - [ ] Attach a photo and a PDF to an event, open both, download one (check the file name), delete one, and confirm in the Cloudinary Media Library that files are under `health-tracker/production/` with type _authenticated_ and that the deleted file is gone.
 
 **Free-tier notes:** Render's free web services sleep after ~15 minutes idle. The first request can take ~50 s, and the app shows a "waking up" state. Supabase pauses free projects after a week without activity and doesn't take backups. For real personal data, consider a paid tier or scheduled `pg_dump` backups.
+
+## Email
+
+Verification codes and password-reset links are sent by the API. **Choose the transport with `MAIL_PROVIDER`:**
+
+| Value              | Transport                                               | Use for                                       |
+| ------------------ | ------------------------------------------------------- | --------------------------------------------- |
+| `console`          | none — logs the email, and writes it to `.mail-outbox/` | local development                             |
+| `brevo` / `resend` | HTTPS API (port 443), needs `MAIL_API_KEY`              | **production, and any host that blocks SMTP** |
+| `smtp`             | SMTP via `SMTP_URL`                                     | local use, or a host that allows SMTP ports   |
+
+**Render's free instances block outbound SMTP ports 25, 465 and 587** ([changelog](https://render.com/changelog/free-web-services-will-no-longer-allow-outbound-traffic-to-smtp-ports)), so SMTP cannot deliver there at all — connections hang until they time out. Use `brevo` or `resend`, or move to a paid instance.
+
+**Setting up Brevo** (free tier ~300 emails/day, and a plain Gmail address can be used as the sender):
+
+1. Create an account, then **Senders & Domains → Senders → Add a sender** and verify the address you want mail to come from.
+2. **SMTP & API → API keys → Generate a new API key.**
+3. On the Render API service set `MAIL_PROVIDER=brevo`, `MAIL_API_KEY=<the key>`, `MAIL_FROM="Health Tracker <your-verified@address>"`.
+
+Resend works the same way with `MAIL_PROVIDER=resend`, but needs a **domain** you own for real recipients; its shared `onboarding@resend.dev` sender only delivers to your own account address.
+
+At startup the API logs which provider is active and whether the key was accepted (`Brevo API key accepted`), and each send logs how long the provider took. If a send fails, "Resend code" returns a visible error rather than claiming the email is on its way.
 
 ## Backups
 

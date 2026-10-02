@@ -1,5 +1,5 @@
 import request from 'supertest';
-import { afterAll, beforeEach, describe, expect, it } from 'vitest';
+import { afterAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { pool } from '../src/db/pool.js';
 import { deleteStaleUnverifiedUsers } from '../src/modules/auth/verification.repository.js';
 import { mailer } from '../src/utils/mailer.js';
@@ -167,6 +167,20 @@ describe('email verification at signup', () => {
       .post('/api/auth/login')
       .send({ email, password: newPassword });
     expect(login.body.user.emailVerified).toBe(true);
+  });
+
+  it('tells the user when the email could not be sent, instead of claiming it was', async () => {
+    const { client } = await unverifiedUser();
+    await pool.query(
+      "UPDATE email_verification_codes SET created_at = now() - interval '2 minutes'",
+    );
+    const send = vi.spyOn(mailer, 'send').mockRejectedValue(new Error('Brevo returned 401'));
+
+    const res = await client.post('/api/auth/resend-verification');
+    expect(res.status).toBe(502);
+    expect(res.body.error.code).toBe('EMAIL_SEND_FAILED');
+    expect(res.body.error.message).not.toMatch(/Brevo|401/); // provider detail stays in the logs
+    send.mockRestore();
   });
 
   it('requires a session to verify or resend', async () => {

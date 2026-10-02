@@ -27,11 +27,13 @@ services:
         sync: false
       - key: TRUST_PROXY
         value: '1'
+      # Render blocks outbound SMTP ports (25/465/587) on free instances, so email goes over
+      # HTTPS. Use "resend" instead of "brevo" if you prefer; both need MAIL_API_KEY.
       - key: MAIL_PROVIDER
-        value: smtp
-      - key: MAIL_FROM
+        value: brevo
+      - key: MAIL_FROM # must be a sender you verified with the provider
         sync: false
-      - key: SMTP_URL
+      - key: MAIL_API_KEY
         sync: false
       - key: CLOUDINARY_URL # cloudinary://key:secret@cloud (optional; enables file uploads)
         sync: false

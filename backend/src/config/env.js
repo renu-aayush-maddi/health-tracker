@@ -11,9 +11,11 @@ const envSchema = z.object({
   TRUST_PROXY: z.coerce.number().int().min(0).default(0),
   SESSION_IDLE_DAYS: z.coerce.number().int().positive().default(7),
   SESSION_ABSOLUTE_DAYS: z.coerce.number().int().positive().default(30),
-  MAIL_PROVIDER: z.enum(['console', 'smtp']).default('console'),
+  // brevo/resend send over HTTPS; many hosts block outbound SMTP ports (see README → Email).
+  MAIL_PROVIDER: z.enum(['console', 'smtp', 'brevo', 'resend']).default('console'),
   MAIL_FROM: z.string().default('Health Tracker <no-reply@localhost>'),
   SMTP_URL: z.string().optional(),
+  MAIL_API_KEY: z.preprocess((value) => (value === '' ? undefined : value), z.string().optional()),
   DISABLE_RATE_LIMITS: z.enum(['true', 'false']).default('false'),
   // cloudinary://<api_key>:<api_secret>@<cloud_name>. Without it, attachments are disabled.
   CLOUDINARY_URL: z.preprocess(
@@ -59,6 +61,11 @@ function loadConfig() {
   }
 
   const env = parsed.data;
+  if (['brevo', 'resend'].includes(env.MAIL_PROVIDER) && !env.MAIL_API_KEY) {
+    throw new Error(
+      `Invalid environment configuration:\n  - MAIL_API_KEY is required when MAIL_PROVIDER=${env.MAIL_PROVIDER}`,
+    );
+  }
   if (env.MAIL_PROVIDER === 'smtp' && !env.SMTP_URL) {
     throw new Error(
       'Invalid environment configuration:\n  - SMTP_URL is required when MAIL_PROVIDER=smtp',

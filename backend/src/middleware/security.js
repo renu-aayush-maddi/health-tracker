@@ -16,6 +16,10 @@ export function requireSameOrigin(req, res, next) {
 
   const origin = req.get('origin');
   if (origin !== config.APP_ORIGIN) {
+    // Without this line a misconfigured APP_ORIGIN looks like an unexplained 403 in the logs.
+    console.warn(
+      `Blocked ${req.method} ${req.path}: Origin ${origin ?? '(none)'} does not match APP_ORIGIN ${config.APP_ORIGIN}`,
+    );
     return next(forbidden('Request origin not allowed.'));
   }
 

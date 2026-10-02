@@ -7,6 +7,93 @@ import { config } from '../config/env.js';
 // end-to-end tests (codes, reset links). Git-ignored. Never used in production.
 const DEV_OUTBOX_DIR = path.resolve(process.cwd(), '..', '.mail-outbox');
 
+const MAX_SEND_ATTEMPTS = 2;
+const HTTP_TIMEOUT_MS = 15_000;
+
+const escapeHtml = (value) =>
+  value.replace(
+    /[&<>"']/g,
+    (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c],
+  );
+
+/** `Health Tracker <no-reply@example.com>` → `{ name, email }`. */
+export function parseAddress(value) {
+  const match = /^\s*"?(.*?)"?\s*<([^>]+)>\s*$/.exec(value);
+  return match ? { name: match[1] || undefined, email: match[2].trim() } : { email: value.trim() };
+}
+
+/**
+ * Email providers that work over HTTPS (port 443). Many hosts — including Render's free
+ * instances — block outbound SMTP ports (25/465/587) at the firewall, so an SMTP send there
+ * hangs until it times out. These APIs are unaffected by that.
+ */
+const HTTP_PROVIDERS = {
+  brevo: {
+    label: 'Brevo',
+    endpoint: 'https://api.brevo.com/v3/smtp/email',
+    verifyEndpoint: 'https://api.brevo.com/v3/account',
+    headers: (apiKey) => ({ 'api-key': apiKey, accept: 'application/json' }),
+    body: ({ from, to, subject, text, html }) => ({
+      sender: parseAddress(from),
+      to: [{ email: to }],
+      subject,
+      textContent: text,
+      htmlContent: html,
+    }),
+    messageId: (data) => data?.messageId,
+  },
+  resend: {
+    label: 'Resend',
+    endpoint: 'https://api.resend.com/emails',
+    headers: (apiKey) => ({ authorization: `Bearer ${apiKey}` }),
+    body: ({ from, to, subject, text, html }) => ({ from, to: [to], subject, text, html }),
+    messageId: (data) => data?.id,
+  },
+};
+
+/** 4xx means the request itself is wrong (bad key, unverified sender): retrying cannot help. */
+const isRetryable = (status) => !status || status === 429 || status >= 500;
+
+/** Exported so tests can exercise each provider without changing the frozen config. */
+export async function sendViaHttpApi(
+  message,
+  providerName = config.MAIL_PROVIDER,
+  apiKey = config.MAIL_API_KEY,
+) {
+  const provider = HTTP_PROVIDERS[providerName];
+  for (let attempt = 1; ; attempt += 1) {
+    const started = performance.now();
+    let status;
+    try {
+      const response = await fetch(provider.endpoint, {
+        method: 'POST',
+        headers: { ...provider.headers(apiKey), 'content-type': 'application/json' },
+        body: JSON.stringify(provider.body(message)),
+        signal: AbortSignal.timeout(HTTP_TIMEOUT_MS),
+      });
+      status = response.status;
+      const data = await response.json().catch(() => null);
+      if (!response.ok) {
+        // The provider's message says what is wrong (e.g. sender not verified); it carries no
+        // recipient or health data.
+        throw new Error(
+          `${provider.label} returned ${status}: ${JSON.stringify(data)?.slice(0, 200)}`,
+        );
+      }
+      console.log(
+        `Email accepted by ${provider.label} in ${Math.round(performance.now() - started)}ms ` +
+          `(attempt ${attempt}, id ${provider.messageId(data) ?? 'unknown'})`,
+      );
+      return data;
+    } catch (err) {
+      console.error(
+        `${provider.label} send attempt ${attempt} failed after ${Math.round(performance.now() - started)}ms: ${err.message}`,
+      );
+      if (attempt >= MAX_SEND_ATTEMPTS || !isRetryable(status)) throw err;
+    }
+  }
+}
+
 let transport;
 
 /**
@@ -25,8 +112,6 @@ function getTransport() {
   return transport;
 }
 
-const MAX_SEND_ATTEMPTS = 2;
-
 async function sendViaSmtp(message) {
   for (let attempt = 1; ; attempt += 1) {
     const started = performance.now();
@@ -42,6 +127,12 @@ async function sendViaSmtp(message) {
       console.error(
         `SMTP send attempt ${attempt} failed after ${Math.round(performance.now() - started)}ms: ${err.code ?? ''} ${err.message}`,
       );
+      if (err.code === 'ETIMEDOUT' || err.code === 'ENETUNREACH' || err.code === 'ECONNREFUSED') {
+        console.error(
+          'Hint: the SMTP port looks blocked or unreachable from this host. Render blocks ports ' +
+            '25/465/587 on free instances — use MAIL_PROVIDER=brevo or resend (HTTPS) instead.',
+        );
+      }
       if (attempt >= MAX_SEND_ATTEMPTS) throw err;
       // Drop a possibly broken pooled connection before retrying.
       transport.close();
@@ -73,15 +164,63 @@ export const mailer = {
       }
       return;
     }
-    await sendViaSmtp({ from: config.MAIL_FROM, to, subject, text, html });
+
+    // Brevo requires HTML content; fall back to the plain text when a caller sends none.
+    const message = {
+      from: config.MAIL_FROM,
+      to,
+      subject,
+      text,
+      html: html ?? `<pre>${escapeHtml(text)}</pre>`,
+    };
+    if (HTTP_PROVIDERS[config.MAIL_PROVIDER]) return sendViaHttpApi(message);
+    return sendViaSmtp(message);
   },
 };
 
-const escapeHtml = (value) =>
-  value.replace(
-    /[&<>"']/g,
-    (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c],
-  );
+/** Checks the mail configuration at startup so a bad key or blocked port shows up immediately. */
+export async function verifyMailer() {
+  if (config.isTest) return;
+  const provider = HTTP_PROVIDERS[config.MAIL_PROVIDER];
+  const started = performance.now();
+
+  if (config.MAIL_PROVIDER === 'console') {
+    console.log('Mailer: console — emails are logged, not delivered.');
+    return;
+  }
+
+  if (provider) {
+    console.log(
+      `Mailer: ${provider.label} over HTTPS, from ${parseAddress(config.MAIL_FROM).email}`,
+    );
+    if (!provider.verifyEndpoint) return;
+    try {
+      const response = await fetch(provider.verifyEndpoint, {
+        headers: provider.headers(config.MAIL_API_KEY),
+        signal: AbortSignal.timeout(HTTP_TIMEOUT_MS),
+      });
+      if (!response.ok) throw new Error(`key check returned ${response.status}`);
+      console.log(
+        `${provider.label} API key accepted (${Math.round(performance.now() - started)}ms)`,
+      );
+    } catch (err) {
+      console.error(
+        `${provider.label} check failed: ${err.message} — emails will not be delivered.`,
+      );
+    }
+    return;
+  }
+
+  console.log(`Mailer: SMTP via ${new URL(config.SMTP_URL).hostname}`);
+  try {
+    await getTransport().verify();
+    console.log(`SMTP ready (${Math.round(performance.now() - started)}ms)`);
+  } catch (err) {
+    console.error(
+      `SMTP check failed: ${err.code ?? ''} ${err.message} — emails will not be delivered until this is fixed.`,
+    );
+  }
+}
 
 export function sendPasswordResetEmail({ to, name, resetUrl, expiresInMinutes }) {
   const text = [
@@ -124,18 +263,4 @@ export function sendVerificationCodeEmail({ to, name, code, expiresInMinutes }) 
     text,
     html,
   });
-}
-
-/** Opens and checks the SMTP connection at startup: warms the pool and surfaces bad config early. */
-export async function verifyMailer() {
-  if (config.MAIL_PROVIDER !== 'smtp' || config.isTest) return;
-  const started = performance.now();
-  try {
-    await getTransport().verify();
-    console.log(`SMTP ready (${Math.round(performance.now() - started)}ms)`);
-  } catch (err) {
-    console.error(
-      `SMTP check failed: ${err.code ?? ''} ${err.message} — emails will not be delivered until this is fixed.`,
-    );
-  }
 }

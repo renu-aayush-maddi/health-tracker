@@ -1,9 +1,14 @@
+import dns from 'node:dns';
 import { createApp } from './app.js';
 import { config } from './config/env.js';
 import { pool } from './db/pool.js';
 import { verifyMailer } from './utils/mailer.js';
 import { deleteExpiredSessionsAndTokens } from './modules/auth/session.repository.js';
 import { deleteStaleUnverifiedUsers } from './modules/auth/verification.repository.js';
+
+// Many hosts (Render among them) have no outbound IPv6 route, yet DNS returns AAAA records
+// first, producing `connect ENETUNREACH <ipv6>`. Prefer IPv4 for every outbound connection.
+dns.setDefaultResultOrder('ipv4first');
 
 const app = createApp();
 
@@ -17,6 +22,7 @@ if (config.fileStorage === 'memory') {
 
 const server = app.listen(config.PORT, () => {
   console.log(`API listening on port ${config.PORT} (${config.NODE_ENV})`);
+  console.log(`Expecting browser requests from APP_ORIGIN=${config.APP_ORIGIN}`);
   verifyMailer();
 });
 
