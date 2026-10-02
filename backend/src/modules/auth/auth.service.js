@@ -14,7 +14,7 @@ import * as resetTokens from './resetToken.repository.js';
 import { deleteUserSessions } from './session.repository.js';
 import { startSession } from './session.service.js';
 
-const RESET_TOKEN_TTL_MINUTES = 60;
+const RESET_TOKEN_TTL_MINUTES = 30;
 const UNIQUE_VIOLATION = '23505';
 
 const invalidCredentials = () =>

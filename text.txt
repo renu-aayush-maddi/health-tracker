@@ -1,0 +1,18 @@
+Both Excel backups are built: each user can download their own data from Settings, and a nightly job can save an encrypted backup of everyone's data. The per-user download works now. The nightly backup is fully built and tested locally, but it won't run until you add some GitHub secrets (below).
+
+1. Per-user download: in Settings → Your data, "Download my data (Excel)" gives you an .xlsx with sheets for an overview, health events (dates, status, severity, symptoms, description, notes), medicines, and your files (names, types, sizes, tags). It only ever contains your own data, and text that looks like an Excel formula stays plain text, so it can't run.
+
+2. Nightly server backup: every night at 02:00 India time, a free GitHub Actions job exports everyone's text data to Excel and encrypts it. You can also run it on demand. It's stored privately in Cloudinary and the newest 14 are kept. Password hashes and login sessions are never included. A side benefit: the nightly run keeps a free Supabase project from pausing for inactivity.
+
+To get a readable copy back, run npm run backup:fetch on your machine; it downloads and decrypts the latest backup into a backups/ folder that git ignores. backup:list shows what's stored, and backup:decrypt handles a file you downloaded yourself. As you chose, there's no import back into the app.
+
+Neither copy includes the uploaded files themselves, only their names and tags. Supabase is still where the real data lives.
+
+Testing: all 139 unit/integration tests and 36 browser tests pass, including 6 new tests for the export, the encryption and the backup job. I also ran the real commands against the dev database: a backup of 38 users and 43 events decrypted correctly, and a wrong key was rejected. The dependency audit is clean; the Excel library needed one sub-dependency forced to a patched version.
+
+What you need to do to switch on the nightly backup:
+
+Create a key with openssl rand -base64 32 and keep a copy in a password manager. If you lose it, the backups can't be decrypted, by anyone.
+Add these GitHub repository secrets: BACKUP_ENCRYPTION_KEY, DATABASE_URL, DATABASE_SSL_CA, APP_ORIGIN, CLOUDINARY_URL.
+Run "Nightly encrypted backup" once from the Actions tab to confirm it works.
+GitHub pauses scheduled jobs in repositories with no activity for 60 days; if that happens, re-enable it in the Actions tab. All of this is in the README's new Backups section.
