@@ -3,7 +3,7 @@ import { HttpError, badRequest } from '../../utils/httpErrors.js';
 import { sendVerificationCodeEmail } from '../../utils/mailer.js';
 import * as codes from './verification.repository.js';
 
-export const CODE_TTL_MINUTES = 10;
+export const CODE_TTL_MINUTES = 60;
 export const MAX_ATTEMPTS = 5;
 export const RESEND_COOLDOWN_SECONDS = 60;
 
