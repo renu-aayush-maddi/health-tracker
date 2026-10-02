@@ -9,9 +9,45 @@ const DEV_OUTBOX_DIR = path.resolve(process.cwd(), '..', '.mail-outbox');
 
 let transport;
 
+/**
+ * A pooled SMTP connection with short timeouts. Nodemailer's defaults (2 min to connect,
+ * 10 min on an idle socket) let a stalled connection hold an email for many minutes before it
+ * even leaves the server. Here a stuck attempt fails within seconds and is retried once.
+ */
 function getTransport() {
-  transport ??= nodemailer.createTransport(config.SMTP_URL);
+  transport ??= nodemailer.createTransport(config.SMTP_URL, {
+    pool: true,
+    maxConnections: 2,
+    connectionTimeout: 10_000,
+    greetingTimeout: 10_000,
+    socketTimeout: 20_000,
+  });
   return transport;
+}
+
+const MAX_SEND_ATTEMPTS = 2;
+
+async function sendViaSmtp(message) {
+  for (let attempt = 1; ; attempt += 1) {
+    const started = performance.now();
+    try {
+      const info = await getTransport().sendMail(message);
+      // Log timing and the server's reply, never the recipient or content.
+      console.log(
+        `Email accepted by SMTP in ${Math.round(performance.now() - started)}ms ` +
+          `(attempt ${attempt}, ${String(info.response).slice(0, 40)})`,
+      );
+      return info;
+    } catch (err) {
+      console.error(
+        `SMTP send attempt ${attempt} failed after ${Math.round(performance.now() - started)}ms: ${err.code ?? ''} ${err.message}`,
+      );
+      if (attempt >= MAX_SEND_ATTEMPTS) throw err;
+      // Drop a possibly broken pooled connection before retrying.
+      transport.close();
+      transport = undefined;
+    }
+  }
 }
 
 // `send` is a property (not a bare function) so tests can intercept outgoing mail.
@@ -37,7 +73,7 @@ export const mailer = {
       }
       return;
     }
-    await getTransport().sendMail({ from: config.MAIL_FROM, to, subject, text, html });
+    await sendViaSmtp({ from: config.MAIL_FROM, to, subject, text, html });
   },
 };
 
@@ -88,4 +124,18 @@ export function sendVerificationCodeEmail({ to, name, code, expiresInMinutes }) 
     text,
     html,
   });
+}
+
+/** Opens and checks the SMTP connection at startup: warms the pool and surfaces bad config early. */
+export async function verifyMailer() {
+  if (config.MAIL_PROVIDER !== 'smtp' || config.isTest) return;
+  const started = performance.now();
+  try {
+    await getTransport().verify();
+    console.log(`SMTP ready (${Math.round(performance.now() - started)}ms)`);
+  } catch (err) {
+    console.error(
+      `SMTP check failed: ${err.code ?? ''} ${err.message} — emails will not be delivered until this is fixed.`,
+    );
+  }
 }

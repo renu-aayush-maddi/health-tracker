@@ -47,7 +47,7 @@ export default function VerifyEmailPage() {
     setResending(true);
     try {
       await authService.resendVerification();
-      toast.success('A new code is on its way.');
+      toast.success('A new code is on its way. Earlier codes still work too.');
       form.reset({ code: '' });
       setCooldown(RESEND_COOLDOWN_SECONDS);
     } catch (err) {
@@ -74,7 +74,8 @@ export default function VerifyEmailPage() {
       <h1 className={styles.heading}>Check your email</h1>
       <p className={styles.subheading}>
         We sent a 6-digit code to <strong>{maskEmail(auth.user.email)}</strong>. Enter it below to
-        finish creating your account. It expires in 10 minutes.
+        finish creating your account. Codes work for 10 minutes, and if you asked for more than one,
+        any of them will do.
       </p>
 
       <form className={styles.form} onSubmit={onSubmit} noValidate>

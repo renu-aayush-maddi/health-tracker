@@ -1,6 +1,7 @@
 import { createApp } from './app.js';
 import { config } from './config/env.js';
 import { pool } from './db/pool.js';
+import { verifyMailer } from './utils/mailer.js';
 import { deleteExpiredSessionsAndTokens } from './modules/auth/session.repository.js';
 import { deleteStaleUnverifiedUsers } from './modules/auth/verification.repository.js';
 
@@ -16,6 +17,7 @@ if (config.fileStorage === 'memory') {
 
 const server = app.listen(config.PORT, () => {
   console.log(`API listening on port ${config.PORT} (${config.NODE_ENV})`);
+  verifyMailer();
 });
 
 const CLEANUP_INTERVAL_MS = 6 * 60 * 60 * 1000;

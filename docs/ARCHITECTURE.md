@@ -739,7 +739,7 @@ Supabase ──fetchFullBackup──► Excel ──AES-256-GCM (BACKUP_ENCRYPTI
 | `POST /api/auth/verify-email` `{code}` | Requires a session. Spaces and dashes in the code are tolerated. 200 `{user}` with `emailVerified: true` |
 | `POST /api/auth/resend-verification`   | Requires a session. 60 s cooldown → 429 `RESEND_TOO_SOON`                                                |
 
-**Code rules** (`verification.service.js`): `crypto.randomInt` 6 digits; stored as SHA-256(`user_id:code`) in `email_verification_codes` (one row per user, so a new code replaces the old); expires after **10 min**; **5 wrong attempts** lock the code; constant-time comparison. Verify and resend share a limit of 20 per hour per user. Logging in while unverified sends a fresh code if none is usable.
+**Code rules** (`verification.service.js`): `crypto.randomInt` 6 digits; stored as SHA-256(`user_id:code`) in `email_verification_codes`. **The 3 newest unexpired codes are all accepted** (migration `0005`), because emails can arrive late or out of order and an earlier email's code must not be rejected as "wrong"; expires after **10 min**; **5 wrong attempts** (counted on the newest code) require a new code; constant-time comparison. Verify and resend share a limit of 20 per hour per user. Logging in while unverified sends a fresh code if none is usable.
 
 **Edge cases**
 
@@ -753,3 +753,9 @@ Supabase ──fetchFullBackup──► Excel ──AES-256-GCM (BACKUP_ENCRYPTI
 **Testing.** 10 backend tests (hashing, blocking, success, attempt limit, expiry, resend cooldown, login re-issue, reset-verifies, auth required, stale cleanup); all other backend tests sign up through the same flow via the test helper. E2E: verification screen (wrong code, resend countdown, locked app, redirect back, axe).
 
 **E2E isolation (changed).** Playwright now boots its own API (:4100) and app (:5174) with explicit env overrides (console mailer, in-memory files, no rate limits) against `health_tracker_e2e` (created automatically). Before this, a developer's `.env` with real SMTP could send test emails.
+
+### Email delivery (SMTP)
+
+The SMTP transport is pooled, with short timeouts (10 s connect/greeting, 20 s socket) and **one automatic retry** on a fresh connection. Nodemailer's defaults (2 min connect, 10 min idle socket) could let a stalled connection hold a verification email for minutes. The connection is checked and warmed at startup ("SMTP ready" in the logs). Each send logs the time until the server accepted it and the server's reply, never the recipient or content. Once Gmail has accepted a message (`250 OK`), any further delay happens in delivery or spam filtering on the recipient's side.
+
+Gmail SMTP suits personal use. For production volume and deliverability, a transactional email provider with SPF/DKIM on your own domain (e.g. Brevo, Resend, Postmark) is recommended; it only needs a different `SMTP_URL` and `MAIL_FROM`.

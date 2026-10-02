@@ -92,7 +92,7 @@ describe('email verification at signup', () => {
     expect(res.body.error.fields.code).toBe('This code has expired. Request a new one.');
   });
 
-  it('resends a new code after a cooldown, replacing the old one', async () => {
+  it('resends after a cooldown, and earlier codes keep working (late emails still count)', async () => {
     const { client, email } = await unverifiedUser();
     const first = latestVerificationCode(email);
 
@@ -104,13 +104,41 @@ describe('email verification at signup', () => {
       "UPDATE email_verification_codes SET created_at = now() - interval '2 minutes'",
     );
     expect((await client.post('/api/auth/resend-verification')).status).toBe(202);
-    const second = latestVerificationCode(email);
     expect(mailer.outbox.filter((m) => m.to === email)).toHaveLength(2);
 
-    if (second !== first) {
-      expect((await client.post('/api/auth/verify-email').send({ code: first })).status).toBe(400);
+    // The code from the FIRST email is accepted, even though a newer one was sent.
+    const res = await client.post('/api/auth/verify-email').send({ code: first });
+    expect(res.status).toBe(200);
+    expect(res.body.user.emailVerified).toBe(true);
+  });
+
+  it('keeps only the 3 newest codes, and expired ones never work', async () => {
+    const { client, email, user } = await unverifiedUser();
+    const sent = [latestVerificationCode(email)];
+    for (let i = 0; i < 3; i += 1) {
+      await pool.query(
+        "UPDATE email_verification_codes SET created_at = created_at - interval '2 minutes'",
+      );
+      await client.post('/api/auth/resend-verification');
+      sent.push(latestVerificationCode(email));
     }
-    expect((await client.post('/api/auth/verify-email').send({ code: second })).status).toBe(200);
+    const { rows } = await pool.query(
+      'SELECT count(*)::int AS n FROM email_verification_codes WHERE user_id = $1',
+      [user.id],
+    );
+    expect(rows[0].n).toBe(3);
+
+    const oldest = sent[0];
+    if (!sent.slice(1).includes(oldest)) {
+      const res = await client.post('/api/auth/verify-email').send({ code: oldest });
+      expect(res.status).toBe(400); // dropped: only the newest three stay valid
+    }
+
+    await pool.query(
+      "UPDATE email_verification_codes SET expires_at = now() - interval '1 second'",
+    );
+    const expired = await client.post('/api/auth/verify-email').send({ code: sent[3] });
+    expect(expired.body.error.fields.code).toBe('This code has expired. Request a new one.');
   });
 
   it('sends a fresh code when an unverified user logs in with an expired code', async () => {
