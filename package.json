@@ -1,0 +1,42 @@
+{
+  "name": "health-tracker",
+  "private": true,
+  "type": "module",
+  "workspaces": [
+    "shared",
+    "backend",
+    "frontend",
+    "e2e"
+  ],
+  "engines": {
+    "node": ">=24"
+  },
+  "scripts": {
+    "dev": "concurrently -n api,web -c cyan,magenta \"npm:dev -w backend\" \"npm:dev -w frontend\"",
+    "build": "npm run build -w frontend",
+    "migrate": "npm run migrate -w backend",
+    "seed": "npm run seed -w backend",
+    "test": "npm test --workspaces --if-present",
+    "lint": "eslint .",
+    "format": "prettier --write .",
+    "test:e2e": "npm run test:e2e -w e2e",
+    "backup": "npm run backup -w backend",
+    "backup:list": "npm run backup:list -w backend",
+    "backup:fetch": "npm run backup:fetch -w backend --",
+    "backup:decrypt": "npm run backup:decrypt -w backend --"
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "concurrently": "^10.0.5",
+    "eslint": "^10.11.0",
+    "eslint-plugin-react-hooks": "^7.1.1",
+    "eslint-plugin-react-refresh": "^0.5.7",
+    "globals": "^17.13.0",
+    "prettier": "^3.9.9"
+  },
+  "overrides": {
+    "exceljs": {
+      "uuid": "^11.1.1"
+    }
+  }
+}

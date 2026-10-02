@@ -1,0 +1,110 @@
+.wrapper {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  margin-bottom: var(--space-5);
+}
+
+.topRow {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: var(--space-2);
+}
+
+.search {
+  position: relative;
+  grid-column: 1 / -1;
+}
+
+.searchIcon {
+  position: absolute;
+  top: 50%;
+  left: var(--space-3);
+  transform: translateY(-50%);
+  color: var(--color-text-muted);
+  pointer-events: none;
+}
+
+.searchInput {
+  width: 100%;
+  min-height: var(--touch-target);
+  padding: var(--space-2) var(--space-3) var(--space-2) var(--space-10);
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  font-size: var(--font-size-md);
+}
+
+.searchInput:focus-visible {
+  outline: none;
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 3px var(--color-primary-soft);
+}
+
+.sort {
+  min-width: 0;
+}
+
+/* Phones: filters collapse behind a toggle. */
+.panel {
+  display: none;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-3);
+  padding: var(--space-4);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface);
+}
+
+.panel.open {
+  display: grid;
+}
+
+.panel > :nth-child(1) {
+  grid-column: 1 / -1;
+}
+
+.clear {
+  grid-column: 1 / -1;
+  justify-self: start;
+}
+
+@media (min-width: 768px) {
+  .topRow {
+    grid-template-columns: minmax(0, 1fr) 220px;
+  }
+
+  .search {
+    grid-column: auto;
+  }
+
+  .filterToggle {
+    display: none;
+  }
+
+  /* Tablets and up: filters always visible. */
+  .panel,
+  .panel.open {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    padding: 0;
+    border: none;
+    background: none;
+  }
+
+  .panel > :nth-child(1) {
+    grid-column: auto;
+  }
+}
+
+@media (min-width: 1280px) {
+  .panel,
+  .panel.open {
+    grid-template-columns: 1.4fr 1fr 1fr 1fr 1fr;
+    align-items: start;
+  }
+
+  .clear {
+    grid-column: 1 / -1;
+  }
+}

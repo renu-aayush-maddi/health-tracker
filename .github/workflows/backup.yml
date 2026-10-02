@@ -1,0 +1,35 @@
+name: Nightly encrypted backup
+
+# Exports every user's text data to Excel, encrypts it (AES-256-GCM) and stores it privately in
+# Cloudinary, keeping the newest 14. Restore a copy locally with `npm run backup:fetch`.
+on:
+  schedule:
+    - cron: '30 20 * * *' # 20:30 UTC = 02:00 IST
+  workflow_dispatch: # "Run workflow" button for an on-demand backup
+
+concurrency:
+  group: backup
+  cancel-in-progress: false
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci --omit=dev
+      - name: Create backup
+        run: npm run backup
+        env:
+          NODE_ENV: production
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          DATABASE_SSL_CA: ${{ secrets.DATABASE_SSL_CA }}
+          APP_ORIGIN: ${{ secrets.APP_ORIGIN }}
+          CLOUDINARY_URL: ${{ secrets.CLOUDINARY_URL }}
+          BACKUP_ENCRYPTION_KEY: ${{ secrets.BACKUP_ENCRYPTION_KEY }}

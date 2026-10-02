@@ -1,0 +1,253 @@
+.calendar {
+  --day-header: 32px;
+  --bar-height: 24px;
+  --more-height: 20px;
+  min-width: 0;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface);
+  overflow: hidden;
+}
+
+.weekdays {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  border-bottom: 1px solid var(--color-border);
+  background: var(--color-surface-muted);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text-muted);
+  text-align: center;
+}
+
+.weekdays > span {
+  padding: var(--space-2) 0;
+}
+
+.weekdayShort {
+  display: none;
+}
+
+.week {
+  position: relative;
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  row-gap: 2px;
+  min-height: 120px;
+  border-top: 1px solid var(--color-border);
+}
+
+.week:first-child {
+  border-top: none;
+}
+
+.day {
+  grid-row: 1 / -1;
+  display: flex;
+  align-items: flex-start;
+  justify-content: flex-end;
+  min-width: 0;
+  padding: var(--space-1) var(--space-2);
+  border: none;
+  border-left: 1px solid var(--color-border);
+  background: transparent;
+  color: var(--color-text);
+  font-size: var(--font-size-sm);
+  text-align: right;
+  transition: background-color var(--transition-fast);
+}
+
+.day:first-child {
+  border-left: none;
+}
+
+.day:hover {
+  background: var(--color-surface-muted);
+}
+
+.day:focus-visible {
+  outline-offset: -2px;
+}
+
+.dayNumber {
+  display: grid;
+  place-items: center;
+  min-width: 26px;
+  height: 26px;
+  padding: 0 4px;
+  border-radius: var(--radius-full);
+  font-variant-numeric: tabular-nums;
+}
+
+.outside {
+  color: var(--color-text-muted);
+  background: color-mix(in srgb, var(--color-surface-muted) 45%, transparent);
+}
+
+.today .dayNumber {
+  background: var(--color-primary);
+  color: var(--color-text-inverse);
+  font-weight: var(--font-weight-semibold);
+}
+
+.selected {
+  background: var(--color-primary-soft);
+}
+
+.selected:hover {
+  background: var(--color-primary-soft);
+}
+
+/* Event bars */
+.bar {
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  margin: 0 4px;
+  padding: 0 var(--space-2);
+  border-left: 3px solid var(--bar-strong);
+  border-radius: var(--radius-sm);
+  background: var(--bar-soft);
+  color: var(--bar-text);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-medium);
+  text-decoration: none;
+  white-space: nowrap;
+  overflow: hidden;
+  pointer-events: auto;
+}
+
+.bar:hover {
+  filter: brightness(0.97);
+}
+
+.barLabel {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.none {
+  --bar-soft: var(--color-primary-soft);
+  --bar-strong: var(--color-primary);
+  --bar-text: var(--color-primary-soft-text);
+}
+
+.mild {
+  --bar-soft: var(--color-mild-soft);
+  --bar-strong: var(--color-mild);
+  --bar-text: var(--color-mild);
+}
+
+.moderate {
+  --bar-soft: var(--color-moderate-soft);
+  --bar-strong: var(--color-moderate);
+  --bar-text: var(--color-moderate);
+}
+
+.severe {
+  --bar-soft: var(--color-severe-soft);
+  --bar-strong: var(--color-severe);
+  --bar-text: var(--color-severe);
+}
+
+/* Bars that continue from/into another week have flat edges. */
+.continuesBefore {
+  margin-left: 0;
+  border-left: none;
+  border-top-left-radius: 0;
+  border-bottom-left-radius: 0;
+}
+
+.continuesAfter {
+  margin-right: 0;
+  border-top-right-radius: 0;
+  border-bottom-right-radius: 0;
+}
+
+/* Ongoing: fades out at today's edge instead of ending abruptly. */
+.ongoing:not(.continuesAfter) {
+  background: linear-gradient(90deg, var(--bar-soft) 70%, transparent);
+}
+
+.more {
+  z-index: 1;
+  align-self: start;
+  justify-self: start;
+  margin: 0 4px;
+  padding: 0 var(--space-1);
+  border: none;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--color-text-muted);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-medium);
+}
+
+.more:hover {
+  color: var(--color-text);
+  background: var(--color-surface-muted);
+}
+
+/* Phones: compact grid, thin decorative stripes, single-letter weekdays. */
+@media (max-width: 639px) {
+  .calendar {
+    --day-header: 34px;
+    --bar-height: 5px;
+    --more-height: 12px;
+  }
+
+  .weekdayLong {
+    display: none;
+  }
+
+  .weekdayShort {
+    display: inline;
+  }
+
+  .week {
+    min-height: 64px;
+    row-gap: 3px;
+  }
+
+  .day {
+    justify-content: center;
+    padding: var(--space-1) 0;
+  }
+
+  .dayNumber {
+    min-width: 28px;
+    height: 28px;
+  }
+
+  .bar {
+    margin: 0 2px;
+    padding: 0;
+    border-left: none;
+    border-radius: var(--radius-full);
+    background: var(--bar-strong);
+    pointer-events: none;
+  }
+
+  .ongoing:not(.continuesAfter) {
+    background: linear-gradient(90deg, var(--bar-strong) 60%, transparent);
+  }
+
+  .continuesBefore,
+  .continuesAfter {
+    margin-left: 0;
+    margin-right: 0;
+  }
+
+  .more {
+    justify-self: center;
+    margin: 0;
+    font-size: 0.625rem;
+    line-height: 1;
+    pointer-events: none;
+  }
+
+  .moreWord {
+    display: none;
+  }
+}

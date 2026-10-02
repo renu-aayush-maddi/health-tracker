@@ -1,0 +1,129 @@
+.stats {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--space-3);
+  margin-bottom: var(--space-4);
+}
+
+.stat {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  grid-template-areas:
+    'icon label'
+    'value value';
+  align-items: center;
+  gap: var(--space-2) var(--space-2);
+  min-width: 0;
+  padding: var(--space-4) var(--space-5);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface);
+}
+
+.statIcon {
+  grid-area: icon;
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border-radius: var(--radius-md);
+  background: var(--color-primary-soft);
+  color: var(--color-primary-soft-text);
+}
+
+.ongoing .statIcon {
+  background: var(--color-ongoing-soft);
+  color: var(--color-ongoing);
+}
+
+.resolved .statIcon {
+  background: var(--color-resolved-soft);
+  color: var(--color-resolved);
+}
+
+.statLabel {
+  grid-area: label;
+  min-width: 0;
+  font-size: var(--font-size-sm);
+  color: var(--color-text-muted);
+}
+
+.statValue {
+  grid-area: value;
+  font-size: var(--font-size-3xl);
+  font-weight: var(--font-weight-semibold);
+  line-height: 1.1;
+  font-variant-numeric: tabular-nums;
+}
+
+.insight {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  margin-bottom: var(--space-4);
+  font-size: var(--font-size-sm);
+  color: var(--color-text-muted);
+}
+
+.insight strong {
+  color: var(--color-text);
+  font-weight: var(--font-weight-semibold);
+}
+
+.columns {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--space-4);
+  align-items: start;
+}
+
+@media (min-width: 1024px) {
+  .columns {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+.list {
+  display: grid;
+  gap: var(--space-3);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.ongoingItem {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.resolveButton {
+  justify-self: start;
+}
+
+/* Small phones: stat tiles get tighter so all three still fit in one row. */
+@media (max-width: 479px) {
+  .stats {
+    gap: var(--space-2);
+  }
+
+  .stat {
+    grid-template-columns: 1fr;
+    grid-template-areas:
+      'label'
+      'value';
+    padding: var(--space-3);
+  }
+
+  .statIcon {
+    display: none;
+  }
+
+  .statLabel {
+    font-size: var(--font-size-xs);
+  }
+
+  .statValue {
+    font-size: var(--font-size-2xl);
+  }
+}

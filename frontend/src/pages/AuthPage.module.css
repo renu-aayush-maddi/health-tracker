@@ -1,0 +1,34 @@
+.heading {
+  font-size: var(--font-size-xl);
+}
+
+.subheading {
+  margin-top: var(--space-1);
+  color: var(--color-text-muted);
+}
+
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  margin-top: var(--space-6);
+}
+
+.inlineLink {
+  align-self: flex-end;
+  margin-top: calc(-1 * var(--space-3));
+  padding: var(--space-1) 0; /* comfortable tap target */
+  font-size: var(--font-size-sm);
+}
+
+.switch {
+  margin-top: var(--space-6);
+  text-align: center;
+  font-size: var(--font-size-sm);
+  color: var(--color-text-muted);
+}
+
+.switch a,
+.inlineLink {
+  font-weight: var(--font-weight-medium);
+}

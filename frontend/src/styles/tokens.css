@@ -1,0 +1,107 @@
+/*
+ * Design tokens. Colors use light-dark(), so a single declaration covers both themes:
+ * the active theme follows `color-scheme`, which is "light dark" (system) by default
+ * and is pinned when <html data-theme="light|dark"> is set from user preferences.
+ */
+:root {
+  color-scheme: light dark;
+
+  /* Surfaces */
+  --color-bg: light-dark(#f7f6f2, #121615);
+  --color-surface: light-dark(#ffffff, #1a201f);
+  --color-surface-muted: light-dark(#f1efe9, #222928);
+  --color-surface-raised: light-dark(#ffffff, #212827);
+  --color-overlay: light-dark(rgb(24 32 31 / 0.4), rgb(0 0 0 / 0.6));
+
+  /* Borders */
+  --color-border: light-dark(#e4e1d8, #2e3735);
+  --color-border-strong: light-dark(#cbc6b8, #44504d);
+
+  /* Text */
+  --color-text: light-dark(#1f2a2a, #e6ebe9);
+  --color-text-muted: light-dark(#56605e, #a9b3b0);
+  --color-text-inverse: light-dark(#ffffff, #0d1f1d);
+
+  /* Brand */
+  --color-primary: light-dark(#2f6f68, #7cc2b8);
+  --color-primary-hover: light-dark(#265c56, #96d1c8);
+  --color-primary-soft: light-dark(#e3efed, #1d3532);
+  --color-primary-soft-text: light-dark(#1f524c, #a8dcd4);
+
+  /* Feedback */
+  --color-danger: light-dark(#b4372f, #f0938b);
+  --color-danger-hover: light-dark(#9a2e27, #f5aaa3);
+  --color-danger-soft: light-dark(#fbeceb, #3a1f1d);
+  --color-success: light-dark(#3d7350, #8fcb9f);
+  --color-success-soft: light-dark(#e7f2ea, #1d3324);
+
+  /* Severity: always paired with a text label and icon, never color alone */
+  --color-mild: light-dark(#3d7350, #8fcb9f);
+  --color-mild-soft: light-dark(#e7f2ea, #1d3324);
+  --color-moderate: light-dark(#8a5700, #f0c063);
+  --color-moderate-soft: light-dark(#fbf0dc, #3a2d12);
+  --color-severe: light-dark(#a8323f, #f29aa4);
+  --color-severe-soft: light-dark(#f9e6e8, #3d1e23);
+
+  /* Status */
+  --color-ongoing: light-dark(#2b5d96, #8db8ec);
+  --color-ongoing-soft: light-dark(#e6eef8, #1b2a3d);
+  --color-resolved: light-dark(#4e5b58, #b3bdba);
+  --color-resolved-soft: light-dark(#eeefec, #262d2c);
+
+  --color-focus: light-dark(#2f6f68, #7cc2b8);
+
+  /* Typography */
+  --font-sans:
+    system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, 'Noto Sans', sans-serif;
+  --font-size-xs: 0.75rem;
+  --font-size-sm: 0.875rem;
+  --font-size-md: 1rem;
+  --font-size-lg: 1.125rem;
+  --font-size-xl: 1.375rem;
+  --font-size-2xl: 1.75rem;
+  --font-size-3xl: 2.25rem;
+  --line-height-tight: 1.25;
+  --line-height-normal: 1.5;
+  --font-weight-medium: 500;
+  --font-weight-semibold: 600;
+  --font-weight-bold: 700;
+
+  /* Spacing (4px base) */
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --space-5: 1.25rem;
+  --space-6: 1.5rem;
+  --space-8: 2rem;
+  --space-10: 2.5rem;
+  --space-12: 3rem;
+
+  /* Shape & depth */
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 14px;
+  --radius-full: 999px;
+  --shadow-sm: 0 1px 2px light-dark(rgb(31 42 42 / 0.06), rgb(0 0 0 / 0.3));
+  --shadow-md: 0 4px 16px light-dark(rgb(31 42 42 / 0.08), rgb(0 0 0 / 0.4));
+  --shadow-lg: 0 12px 40px light-dark(rgb(31 42 42 / 0.14), rgb(0 0 0 / 0.5));
+
+  /* Layout */
+  --touch-target: 44px;
+  --content-max: 1200px;
+  --sidebar-width: 240px;
+  --rail-width: 72px;
+  --topbar-height: 56px;
+  --bottomnav-height: 64px;
+
+  --transition-fast: 150ms ease;
+}
+
+:root[data-theme='light'] {
+  color-scheme: light;
+}
+
+:root[data-theme='dark'] {
+  color-scheme: dark;
+}
