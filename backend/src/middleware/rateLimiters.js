@@ -58,3 +58,11 @@ export const exportLimiter = limiter({
   limit: 10,
   key: (req) => `export|${req.auth?.userId ?? ipKeyGenerator(req.ip)}`,
 });
+
+// Verify and resend share a budget per user: brute-forcing a code is capped by MAX_ATTEMPTS per
+// code and by this limit across codes.
+export const verificationLimiter = limiter({
+  windowMs: HOUR,
+  limit: 20,
+  key: (req) => `verify|${req.auth?.userId ?? ipKeyGenerator(req.ip)}`,
+});

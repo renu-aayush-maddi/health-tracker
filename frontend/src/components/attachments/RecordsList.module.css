@@ -143,6 +143,7 @@
 
 .eventLink {
   display: inline-block;
+  min-width: 24px; /* short titles like "Flu" still give a comfortable target */
   min-height: 24px;
   color: var(--color-text);
   font-weight: var(--font-weight-medium);

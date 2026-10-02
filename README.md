@@ -9,7 +9,7 @@ The full design (schema, API, auth, security model) is in [docs/ARCHITECTURE.md]
 
 ## Features
 
-- Accounts with email + password. Sessions live in an HttpOnly cookie and are stored server-side.
+- Accounts with email + password, **verified by a 6-digit code emailed at signup**. Sessions live in an HttpOnly cookie and are stored server-side.
 - Change password, forgot/reset password by email, and delete account with all its data.
 - Health events: preset or custom issue, title, dates (or _ongoing_), severity, symptoms, notes, and any number of medicines (dosage, frequency, dates, notes).
 - Dashboard: totals, ongoing issues with a one-tap "Mark resolved", and recent events.
@@ -73,7 +73,7 @@ In development, password-reset emails are printed to the API's console (`MAIL_PR
 
 The backend tests **drop and recreate** the test database's schema. They refuse to run unless the database name contains `test` and the host isn't Supabase.
 
-The end-to-end suite needs `DISABLE_RATE_LIMITS=true` in your local `.env`, because it registers many users from one IP. The API refuses to start with that flag in production.
+The end-to-end suite starts its **own** servers (API on :4100, app on :5174) against a separate `health_tracker_e2e` database, with the console mailer, in-memory file storage and rate limits off. It never sends real email, touches Cloudinary or changes your dev data, whatever your `.env` says. Verification codes are read from `.mail-outbox/` (git-ignored), where the console mailer saves dev emails.
 
 CI (`.github/workflows/ci.yml`) runs lint, all unit/integration tests against a Postgres service container, and the production build on every push and pull request.
 

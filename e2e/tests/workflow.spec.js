@@ -1,19 +1,9 @@
 import { expect, test } from '@playwright/test';
+import { registerAndVerify, settle } from './helpers.js';
 
 const PASSWORD = 'correct-horse-battery';
 
-async function register(page, name) {
-  const email = `${name.toLowerCase()}-${Date.now()}-${Math.round(Math.random() * 1e6)}@example.com`;
-  await page.goto('/register');
-  await page.getByRole('heading', { name: 'Create your account' }).waitFor();
-  await page.getByLabel('Name').fill(name);
-  await page.getByLabel('Email').fill(email);
-  await page.getByRole('textbox', { name: 'Password', exact: true }).fill(PASSWORD);
-  await page.getByRole('textbox', { name: 'Confirm password' }).fill(PASSWORD);
-  await page.getByRole('button', { name: 'Create account' }).click();
-  await expect(page.getByRole('heading', { level: 1, name: new RegExp(name) })).toBeVisible();
-  return email;
-}
+const register = (page, name) => registerAndVerify(page, name, PASSWORD);
 
 test('primary workflow: add an event, find it, see it on the calendar, edit it, delete it', async ({
   page,
@@ -150,4 +140,44 @@ test('leaving the form with unsaved changes asks for confirmation', async ({ pag
     .click();
   await page.getByRole('button', { name: 'Discard changes' }).click();
   await expect(page.getByRole('heading', { level: 1, name: /Omar/ })).toBeVisible();
+});
+
+test('new accounts must verify their email with the code before using the app', async ({
+  page,
+}) => {
+  const { readVerificationCode } = await import('./helpers.js');
+  const AxeBuilder = (await import('@axe-core/playwright')).default;
+  const email = `verify-${Date.now()}@example.com`;
+  await page.goto('/register');
+  await page.getByRole('heading', { name: 'Create your account' }).waitFor();
+  await page.getByLabel('Name').fill('Vera');
+  await page.getByLabel('Email').fill(email);
+  await page.getByRole('textbox', { name: 'Password', exact: true }).fill(PASSWORD);
+  await page.getByRole('textbox', { name: 'Confirm password' }).fill(PASSWORD);
+  await page.getByRole('button', { name: 'Create account' }).click();
+
+  await expect(page.getByRole('heading', { name: 'Check your email' })).toBeVisible();
+  await expect(page.getByText(/We sent a 6-digit code to v•+@example\.com/)).toBeVisible();
+  await expect(page.getByRole('button', { name: /resend in \d+s/ })).toBeDisabled();
+  await settle(page);
+  const { violations } = await new AxeBuilder({ page })
+    .withTags(['wcag2a', 'wcag2aa', 'wcag21aa', 'wcag22aa'])
+    .analyze();
+  expect(violations.map((v) => v.id)).toEqual([]);
+
+  // The app stays locked until verified
+  await page.goto('/history');
+  await expect(page.getByRole('heading', { name: 'Check your email' })).toBeVisible();
+
+  const code = await readVerificationCode(email);
+  const wrong = String((Number(code) + 1) % 1_000_000).padStart(6, '0');
+  await page.getByLabel('Verification code').fill(wrong);
+  await page.getByRole('button', { name: 'Verify email' }).click();
+  await expect(page.getByText("That code isn't right. 4 attempts left.")).toBeVisible();
+
+  await page.getByLabel('Verification code').fill(code);
+  await page.getByRole('button', { name: 'Verify email' }).click();
+  await expect(page.getByText('Email verified. Welcome to Health Tracker!')).toBeVisible();
+  // Lands where they were heading (History), now unlocked
+  await expect(page.getByRole('heading', { level: 1, name: 'Health History' })).toBeVisible();
 });

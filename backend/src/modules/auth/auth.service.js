@@ -101,6 +101,12 @@ export async function resetPassword({ token, newPassword }) {
       );
     }
     await users.updateUserPassword(claimed.user_id, passwordHash, client);
+    // Completing a reset proves control of the inbox, so it also verifies the email. This lets
+    // the real owner reclaim an address someone else signed up with but never verified.
+    await client.query(
+      'UPDATE users SET email_verified_at = COALESCE(email_verified_at, now()) WHERE id = $1',
+      [claimed.user_id],
+    );
     await resetTokens.markResetTokenUsed({ tokenId: claimed.id, userId: claimed.user_id }, client);
     await deleteUserSessions(claimed.user_id, {}, client);
   });

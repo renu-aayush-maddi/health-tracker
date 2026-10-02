@@ -21,9 +21,9 @@ export default function RegisterPage() {
   });
 
   const onSubmit = form.handleSubmit(async (details) => {
-    const user = await auth.register(details);
-    toast.success(`Welcome, ${user.name}! Your account is ready.`);
-    navigate('/', { replace: true });
+    await auth.register(details);
+    toast.success('Account created. We emailed you a verification code.');
+    navigate('/verify-email', { replace: true });
   });
 
   return (

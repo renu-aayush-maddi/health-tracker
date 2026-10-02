@@ -7,6 +7,7 @@ export function toPublicUser(row) {
     name: row.name,
     email: row.email,
     preferences: { ...DEFAULT_PREFERENCES, ...row.preferences },
+    emailVerified: Boolean(row.email_verified_at),
     createdAt: row.created_at,
   };
 }

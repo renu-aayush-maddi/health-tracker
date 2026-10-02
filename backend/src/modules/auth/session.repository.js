@@ -12,7 +12,7 @@ export async function insertSession({ userId, tokenHash, userAgent, idleDays }, 
 export async function findActiveSession(tokenHash) {
   const { rows } = await query(
     `SELECT s.id AS session_id, s.last_used_at,
-            u.id, u.name, u.email, u.preferences, u.created_at
+            u.id, u.name, u.email, u.preferences, u.created_at, u.email_verified_at
        FROM sessions s
        JOIN users u ON u.id = s.user_id
       WHERE s.token_hash = $1 AND s.expires_at > now()`,

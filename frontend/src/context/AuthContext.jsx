@@ -71,6 +71,11 @@ export function AuthProvider({ children }) {
         }
       },
       updateUser: (user) => queryClient.setQueryData(SESSION_KEY, user),
+      verifyEmail: async (code) => {
+        const user = await authService.verifyEmail(code);
+        queryClient.setQueryData(SESSION_KEY, user);
+        return user;
+      },
       retry: () => session.refetch(),
     };
   }, [session, expired, setSessionUser, queryClient]);

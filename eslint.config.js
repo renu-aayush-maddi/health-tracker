@@ -24,12 +24,17 @@ export default [
   },
   {
     // Playwright specs run some code inside the browser (page.evaluate).
-    files: ['e2e/**/*.js'],
+    files: ['e2e/**/*.{js,mjs}'],
     languageOptions: { globals: { ...globals.node, ...globals.browser } },
   },
   {
     files: ['**/*.test.{js,jsx}', '**/tests/**/*.js', 'frontend/src/test/**'],
     languageOptions: { globals: { ...globals.node, ...globals.vitest } },
+  },
+  {
+    // Build tooling runs in Node.
+    files: ['frontend/vite.config.js'],
+    languageOptions: { globals: { ...globals.node } },
   },
   {
     rules: {

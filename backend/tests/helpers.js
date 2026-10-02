@@ -3,6 +3,7 @@ import request from 'supertest';
 import { createApp } from '../src/app.js';
 import { pool } from '../src/db/pool.js';
 import { config } from '../src/config/env.js';
+import { mailer } from '../src/utils/mailer.js';
 
 export const app = createApp();
 
@@ -15,6 +16,7 @@ export const DEFAULT_PASSWORD = 'correct-horse-battery';
 
 export async function resetDatabase() {
   await pool.query('TRUNCATE users CASCADE');
+  mailer.outbox.length = 0;
 }
 
 /**
@@ -51,11 +53,27 @@ export async function registerUser(overrides = {}) {
   if (res.status !== 201)
     throw new Error(`registerUser failed: ${res.status} ${JSON.stringify(res.body)}`);
   const cookie = sessionCookie(res).split(';')[0]; // "name=value", usable in a Cookie header
-  return { client, user: res.body.user, email, password, cookie };
+
+  // Most tests need a fully usable account, so verify the email unless asked not to.
+  if (overrides.verify === false) return { client, user: res.body.user, email, password, cookie };
+  const verified = await client
+    .post('/api/auth/verify-email')
+    .send({ code: latestVerificationCode(email) });
+  if (verified.status !== 200)
+    throw new Error(`verify failed: ${verified.status} ${JSON.stringify(verified.body)}`);
+  return { client, user: verified.body.user, email, password, cookie };
 }
 
 export function sessionCookie(res) {
   return (res.headers['set-cookie'] ?? []).find((c) =>
     c.startsWith(`${config.sessionCookieName}=`),
   );
+}
+
+/** The most recent verification code emailed to `email` (from the test outbox). */
+export function latestVerificationCode(email) {
+  const message = [...mailer.outbox]
+    .reverse()
+    .find((m) => m.to === email && /verification code/.test(m.subject));
+  return message?.text.match(/verification code is: (\d{6})/)?.[1];
 }

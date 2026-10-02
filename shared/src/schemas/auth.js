@@ -82,3 +82,9 @@ export const resetPasswordSchema = object({
   newPassword: newPasswordField,
   confirmPassword: confirmField,
 }).superRefine(passwordsMatch('newPassword'));
+
+export const verifyEmailSchema = object({
+  code: string({ error: 'Enter the 6-digit code.' })
+    .transform((value) => value.replace(/\s|-/g, '')) // tolerate "123 456" or "123-456" when pasted
+    .pipe(string().regex(/^\d{6}$/, 'Enter the 6-digit code from the email.')),
+});

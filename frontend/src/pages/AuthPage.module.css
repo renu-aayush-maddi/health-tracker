@@ -32,3 +32,39 @@
 .inlineLink {
   font-weight: var(--font-weight-medium);
 }
+
+.badge {
+  display: grid;
+  place-items: center;
+  width: 48px;
+  height: 48px;
+  margin-bottom: var(--space-4);
+  border-radius: var(--radius-full);
+  background: var(--color-primary-soft);
+  color: var(--color-primary-soft-text);
+}
+
+.codeField input {
+  font-size: var(--font-size-xl);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.3em;
+  text-align: center;
+}
+
+.textButton {
+  min-height: 24px;
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--color-primary);
+  font: inherit;
+  font-weight: var(--font-weight-medium);
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.textButton:disabled {
+  color: var(--color-text-muted);
+  text-decoration: none;
+  cursor: default;
+}

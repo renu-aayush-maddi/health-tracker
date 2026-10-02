@@ -1,9 +1,11 @@
 import { toPublicUser } from '../users/user.serializer.js';
 import * as authService from './auth.service.js';
+import * as verification from './verification.service.js';
 import { endSession, revokeCurrentSession, startSession } from './session.service.js';
 
 export async function register(req, res) {
   const user = await authService.registerUser(req.valid.body);
+  await verification.issueCode(user); // emails the 6-digit code
   await revokeCurrentSession(req); // don't leave a previous session on this browser alive
   await startSession(res, { userId: user.id, userAgent: req.get('user-agent') });
   res.status(201).json({ user: toPublicUser(user) });
@@ -11,6 +13,7 @@ export async function register(req, res) {
 
 export async function login(req, res) {
   const user = await authService.authenticate(req.valid.body);
+  if (!user.email_verified_at) await verification.ensureActiveCode(user);
   await revokeCurrentSession(req);
   await startSession(res, { userId: user.id, userAgent: req.get('user-agent') });
   res.json({ user: toPublicUser(user) });
@@ -44,4 +47,15 @@ export async function forgotPassword(req, res) {
 export async function resetPassword(req, res) {
   await authService.resetPassword(req.valid.body);
   res.status(204).end();
+}
+
+export async function verifyEmail(req, res) {
+  if (req.auth.user.email_verified_at) return res.json({ user: toPublicUser(req.auth.user) });
+  const user = await verification.verifyCode(req.auth.user, req.valid.body.code);
+  res.json({ user: toPublicUser(user) });
+}
+
+export async function resendVerification(req, res) {
+  if (!req.auth.user.email_verified_at) await verification.resendCode(req.auth.user);
+  res.status(202).json({ message: 'A new code is on its way.' });
 }

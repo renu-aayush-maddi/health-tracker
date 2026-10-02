@@ -5,6 +5,7 @@ import {
   loginSchema,
   registerSchema,
   resetPasswordSchema,
+  verifyEmailSchema,
 } from '@health-tracker/shared';
 import { requireAuth } from '../../middleware/requireAuth.js';
 import { validate } from '../../middleware/validate.js';
@@ -14,6 +15,7 @@ import {
   loginLimiter,
   passwordChangeLimiter,
   registerLimiter,
+  verificationLimiter,
 } from '../../middleware/rateLimiters.js';
 import * as controller from './auth.controller.js';
 
@@ -47,4 +49,18 @@ authRouter.post(
   passwordChangeLimiter,
   validate({ body: resetPasswordSchema }),
   controller.resetPassword,
+);
+
+authRouter.post(
+  '/verify-email',
+  requireAuth,
+  verificationLimiter,
+  validate({ body: verifyEmailSchema }),
+  controller.verifyEmail,
+);
+authRouter.post(
+  '/resend-verification',
+  requireAuth,
+  verificationLimiter,
+  controller.resendVerification,
 );

@@ -2,6 +2,7 @@ import { createApp } from './app.js';
 import { config } from './config/env.js';
 import { pool } from './db/pool.js';
 import { deleteExpiredSessionsAndTokens } from './modules/auth/session.repository.js';
+import { deleteStaleUnverifiedUsers } from './modules/auth/verification.repository.js';
 
 const app = createApp();
 
@@ -18,10 +19,12 @@ const server = app.listen(config.PORT, () => {
 });
 
 const CLEANUP_INTERVAL_MS = 6 * 60 * 60 * 1000;
+const UNVERIFIED_ACCOUNT_DAYS = 7;
 const runCleanup = () =>
-  deleteExpiredSessionsAndTokens().catch((err) =>
-    console.error('Session cleanup failed:', err.message),
-  );
+  Promise.all([
+    deleteExpiredSessionsAndTokens(),
+    deleteStaleUnverifiedUsers(UNVERIFIED_ACCOUNT_DAYS),
+  ]).catch((err) => console.error('Session cleanup failed:', err.message));
 runCleanup();
 setInterval(runCleanup, CLEANUP_INTERVAL_MS).unref();
 

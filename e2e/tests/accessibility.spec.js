@@ -1,11 +1,12 @@
 import AxeBuilder from '@axe-core/playwright';
 import { expect, test } from '@playwright/test';
 import { DEMO_STATE } from '../global-setup.js';
-import { waitForContent } from './helpers.js';
+import { waitForContent, settle } from './helpers.js';
 
 const WCAG_TAGS = ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa'];
 
 async function expectNoViolations(page, context) {
+  await settle(page);
   const { violations } = await new AxeBuilder({ page }).withTags(WCAG_TAGS).analyze();
   const summary = violations.map(
     (v) =>

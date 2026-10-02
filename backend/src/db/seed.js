@@ -136,7 +136,7 @@ export async function seed() {
   if (config.isProduction) throw new Error('Refusing to seed demo data in production.');
   await query('DELETE FROM users WHERE email = $1', [DEMO_EMAIL]);
   const { rows } = await query(
-    'INSERT INTO users (name, email, password_hash) VALUES ($1, $2, $3) RETURNING id',
+    'INSERT INTO users (name, email, password_hash, email_verified_at) VALUES ($1, $2, $3, now()) RETURNING id',
     ['Demo User', DEMO_EMAIL, await hashPassword(DEMO_PASSWORD)],
   );
   for (const event of EVENTS) {

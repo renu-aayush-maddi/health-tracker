@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { deleteAccountSchema, updateProfileSchema } from '@health-tracker/shared';
 import { apiLimiter, exportLimiter, passwordChangeLimiter } from '../../middleware/rateLimiters.js';
 import { requireAuth } from '../../middleware/requireAuth.js';
+import { requireVerified } from '../../middleware/requireVerified.js';
 import { validate } from '../../middleware/validate.js';
 import { badRequest } from '../../utils/httpErrors.js';
 import { verifyPassword } from '../../utils/passwords.js';
@@ -22,7 +23,7 @@ usersRouter.get('/me', (req, res) => {
 });
 
 /** "Download my data": an Excel copy of this user's own records (text and file details only). */
-usersRouter.get('/me/export', exportLimiter, async (req, res) => {
+usersRouter.get('/me/export', requireVerified, exportLimiter, async (req, res) => {
   const generatedAt = new Date();
   const workbook = await buildWorkbook(await fetchUserExport(req.auth.userId), {
     scope: 'user',

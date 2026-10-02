@@ -13,6 +13,7 @@ import {
 } from '@health-tracker/shared';
 import { apiLimiter, uploadLimiter } from '../../middleware/rateLimiters.js';
 import { requireAuth } from '../../middleware/requireAuth.js';
+import { requireVerified } from '../../middleware/requireVerified.js';
 import { validate } from '../../middleware/validate.js';
 import * as attachments from '../attachments/attachment.controller.js';
 import { parseUpload } from '../attachments/attachment.upload.js';
@@ -21,7 +22,7 @@ import * as events from './healthEvent.controller.js';
 
 export const healthEventsRouter = Router();
 
-healthEventsRouter.use(requireAuth, apiLimiter);
+healthEventsRouter.use(requireAuth, requireVerified, apiLimiter);
 
 healthEventsRouter.get('/', validate({ query: listEventsQuerySchema }), events.list);
 healthEventsRouter.post('/', validate({ body: healthEventSchema }), events.create);

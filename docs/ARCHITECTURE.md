@@ -727,3 +727,29 @@ Supabase ──fetchFullBackup──► Excel ──AES-256-GCM (BACKUP_ENCRYPTI
 **Why GitHub Actions:** Render cron jobs are a paid feature; Actions schedules are free and keep the backup independent of the web service. Caveat: scheduled workflows pause after 60 days without repository activity.
 
 **Dependency note:** exceljs pins an old `uuid`; a root `overrides` entry moves it to `uuid@^11.1.1` (patched for GHSA-w5hq-g745-h8pq). `npm audit` is clean.
+
+---
+
+## Addendum: email verification (OTP at signup)
+
+**Flow.** `POST /auth/register` creates the account (`users.email_verified_at = NULL`), emails a **6-digit code**, and starts a session. Until verified, `requireVerified` makes every data route return **403 `EMAIL_NOT_VERIFIED`**: health events, medicines, dashboard, attachments, records and export. The session, logout, `GET /users/me`, account deletion and the verification endpoints remain available. The SPA routes unverified users to `/verify-email`, then back to the page they wanted.
+
+| Endpoint                               | Notes                                                                                                    |
+| -------------------------------------- | -------------------------------------------------------------------------------------------------------- |
+| `POST /api/auth/verify-email` `{code}` | Requires a session. Spaces and dashes in the code are tolerated. 200 `{user}` with `emailVerified: true` |
+| `POST /api/auth/resend-verification`   | Requires a session. 60 s cooldown → 429 `RESEND_TOO_SOON`                                                |
+
+**Code rules** (`verification.service.js`): `crypto.randomInt` 6 digits; stored as SHA-256(`user_id:code`) in `email_verification_codes` (one row per user, so a new code replaces the old); expires after **10 min**; **5 wrong attempts** lock the code; constant-time comparison. Verify and resend share a limit of 20 per hour per user. Logging in while unverified sends a fresh code if none is usable.
+
+**Edge cases**
+
+- _Existing accounts_ were marked verified by migration `0004`, so nobody is locked out.
+- _Squatted addresses:_ if someone registers your email and never verifies it, "Forgot password" still works for you, and completing the reset proves inbox ownership, so it also sets `email_verified_at`.
+- _Abandoned sign-ups:_ unverified accounts older than **7 days** are deleted by the periodic cleanup. They can't hold data, because data routes require verification.
+- `EMAIL_TAKEN` at registration still reveals that an address is registered (unchanged trade-off, rate limited).
+
+**Mail.** `MAIL_PROVIDER=smtp` in production. In development the console mailer also writes each email as JSON to `.mail-outbox/` (git-ignored; never in production). Under test, emails collect in `mailer.outbox`.
+
+**Testing.** 10 backend tests (hashing, blocking, success, attempt limit, expiry, resend cooldown, login re-issue, reset-verifies, auth required, stale cleanup); all other backend tests sign up through the same flow via the test helper. E2E: verification screen (wrong code, resend countdown, locked app, redirect back, axe).
+
+**E2E isolation (changed).** Playwright now boots its own API (:4100) and app (:5174) with explicit env overrides (console mailer, in-memory files, no rate limits) against `health_tracker_e2e` (created automatically). Before this, a developer's `.env` with real SMTP could send test emails.

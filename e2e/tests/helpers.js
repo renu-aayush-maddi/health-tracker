@@ -53,3 +53,56 @@ export async function expectSoundLayout(page) {
   });
   expect(problems, `${page.url()}\n${problems.join('\n')}`).toEqual([]);
 }
+
+const OUTBOX = new URL('../../.mail-outbox/', import.meta.url).pathname;
+
+/** Reads the newest verification code emailed to `email` by the dev server's console mailer. */
+export async function readVerificationCode(email, { timeoutMs = 10_000 } = {}) {
+  const { readdir, readFile } = await import('node:fs/promises');
+  const deadline = Date.now() + timeoutMs;
+  while (Date.now() < deadline) {
+    const files = (await readdir(OUTBOX).catch(() => []))
+      .filter((f) => f.endsWith('.json'))
+      .sort()
+      .reverse();
+    for (const file of files) {
+      const message = JSON.parse(await readFile(OUTBOX + file, 'utf8'));
+      if (message.to === email && /verification code/.test(message.subject)) {
+        return message.text.match(/verification code is: (\d{6})/)[1];
+      }
+    }
+    await new Promise((resolve) => setTimeout(resolve, 200));
+  }
+  throw new Error(`No verification email for ${email}`);
+}
+
+/** Signs up through the UI and completes email verification. Returns the email used. */
+export async function registerAndVerify(page, name, password = 'correct-horse-battery') {
+  const email = `${name.toLowerCase().replace(/\W/g, '')}-${Date.now()}-${Math.round(Math.random() * 1e6)}@example.com`;
+  await page.goto('/register');
+  await page.getByRole('heading', { name: 'Create your account' }).waitFor();
+  await page.getByLabel('Name').fill(name);
+  await page.getByLabel('Email').fill(email);
+  await page.getByRole('textbox', { name: 'Password', exact: true }).fill(password);
+  await page.getByRole('textbox', { name: 'Confirm password' }).fill(password);
+  await page.getByRole('button', { name: 'Create account' }).click();
+  await expect(page.getByRole('heading', { name: 'Check your email' })).toBeVisible();
+  await page.getByLabel('Verification code').fill(await readVerificationCode(email));
+  await page.getByRole('button', { name: 'Verify email' }).click();
+  await expect(
+    page.getByRole('heading', { level: 1, name: new RegExp(name.split(' ')[0]) }),
+  ).toBeVisible();
+  return email;
+}
+
+/** Waits for finite animations (toasts, dialogs) to finish so checks see the settled UI. */
+export async function settle(page) {
+  await page.evaluate(() =>
+    Promise.all(
+      document
+        .getAnimations()
+        .filter((a) => a.effect?.getTiming().iterations !== Infinity)
+        .map((a) => a.finished.catch(() => {})),
+    ),
+  );
+}

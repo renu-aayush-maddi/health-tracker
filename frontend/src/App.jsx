@@ -1,5 +1,5 @@
 import { createBrowserRouter, RouterProvider } from 'react-router';
-import { PublicOnly, RequireAuth } from './components/routing/RouteGuards.jsx';
+import { PublicOnly, RequireAuth, RequireUnverified } from './components/routing/RouteGuards.jsx';
 import RouteError from './components/routing/RouteError.jsx';
 import ThemeSync from './components/routing/ThemeSync.jsx';
 import SlowServerNotice from './components/ui/SlowServerNotice.jsx';
@@ -9,6 +9,7 @@ import ForgotPasswordPage from './pages/ForgotPasswordPage.jsx';
 import LoginPage from './pages/LoginPage.jsx';
 import RegisterPage from './pages/RegisterPage.jsx';
 import ResetPasswordPage from './pages/ResetPasswordPage.jsx';
+import VerifyEmailPage from './pages/VerifyEmailPage.jsx';
 
 /** App pages load on demand, so signing in doesn't wait for the calendar, forms, etc. */
 const page = (load) => () => load().then((module) => ({ Component: module.default }));
@@ -28,6 +29,10 @@ const router = createBrowserRouter([
       },
       // Reachable signed in or out: a reset link may be opened on a device with an active session.
       { path: '/reset-password', element: <ResetPasswordPage /> },
+      {
+        element: <RequireUnverified />,
+        children: [{ path: '/verify-email', element: <VerifyEmailPage /> }],
+      },
     ],
   },
   {

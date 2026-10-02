@@ -1,6 +1,6 @@
 import AxeBuilder from '@axe-core/playwright';
 import { expect, test } from '@playwright/test';
-import { expectSoundLayout } from './helpers.js';
+import { expectSoundLayout, registerAndVerify, settle } from './helpers.js';
 
 // A real 8×8 PNG and a minimal PDF.
 const PNG = Buffer.from(
@@ -17,18 +17,7 @@ test.beforeEach(async ({ page }) => {
   );
 });
 
-async function register(page) {
-  await page.goto('/register');
-  await page.getByRole('heading', { name: 'Create your account' }).waitFor();
-  await page.getByLabel('Name').fill('Files Tester');
-  await page
-    .getByLabel('Email')
-    .fill(`files-${Date.now()}-${Math.round(Math.random() * 1e6)}@example.com`);
-  await page.getByRole('textbox', { name: 'Password', exact: true }).fill('correct-horse-battery');
-  await page.getByRole('textbox', { name: 'Confirm password' }).fill('correct-horse-battery');
-  await page.getByRole('button', { name: 'Create account' }).click();
-  await expect(page.getByRole('heading', { level: 1, name: /Files/ })).toBeVisible();
-}
+const register = (page) => registerAndVerify(page, 'Files Tester');
 
 test('attach records while adding an event, then view, download and delete them', async ({
   page,
@@ -105,6 +94,7 @@ test('the files card is accessible and fits a small phone', async ({ page }) => 
   await expect(page.getByText('File uploaded.')).toBeVisible();
 
   await expectSoundLayout(page);
+  await settle(page);
   const { violations } = await new AxeBuilder({ page })
     .withTags(['wcag2a', 'wcag2aa', 'wcag21aa', 'wcag22aa'])
     .analyze();
@@ -191,6 +181,7 @@ test('tag records, then find them by tag in History → Records', async ({ page 
   await page.getByRole('tab', { name: 'Records' }).click();
   await page.setViewportSize({ width: 320, height: 800 });
   await expectSoundLayout(page);
+  await settle(page);
   const { violations } = await new AxeBuilder({ page })
     .withTags(['wcag2a', 'wcag2aa', 'wcag21aa', 'wcag22aa'])
     .analyze();
