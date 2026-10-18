@@ -38,8 +38,12 @@ export async function expectSoundLayout(page) {
       const label = (el.getAttribute('aria-label') || el.textContent || el.name || el.tagName)
         .trim()
         .slice(0, 40);
-      if (box.left < -1 || box.right > width + 1)
+      // Content inside a deliberately scrollable region (a wide data table) is reachable by
+      // scrolling that region, so it is not clipped.
+      const inScroller = el.closest('[role="region"][tabindex="0"]');
+      if (!inScroller && (box.left < -1 || box.right > width + 1)) {
         issues.push(`clipped: "${label}" spans ${Math.round(box.left)}–${Math.round(box.right)}px`);
+      }
       // WCAG 2.2 target size (minimum): 24×24 CSS px. Stretched links (card titles whose
       // ::after covers the whole card) are measured by the card, so they're exempt.
       const stretched = getComputedStyle(el, '::after').position === 'absolute';

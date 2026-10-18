@@ -17,13 +17,14 @@ const cookieOptions = () => ({
 });
 
 /** Creates a session row and sets the cookie. `db` lets callers include it in a transaction. */
-export async function startSession(res, { userId, userAgent }, db) {
+export async function startSession(res, { userId, userAgent, ipAddress }, db) {
   const token = generateToken();
   await sessions.insertSession(
     {
       userId,
       tokenHash: hashToken(token),
       userAgent: userAgent?.slice(0, 255) ?? null,
+      ipAddress,
       idleDays: lifetimes.idleDays,
     },
     db,
@@ -44,13 +45,13 @@ export function readSessionToken(req) {
 }
 
 /** Resolves a cookie token to { sessionId, user } or null, sliding the idle expiry when due. */
-export async function resolveSession(token) {
+export async function resolveSession(token, { ipAddress } = {}) {
   const row = await sessions.findActiveSession(hashToken(token));
   if (!row) return null;
   if (Date.now() - new Date(row.last_used_at).getTime() > TOUCH_INTERVAL_MS) {
-    await sessions.touchSession(row.session_id, lifetimes);
+    await sessions.touchSession(row.session_id, { ...lifetimes, userId: row.id, ipAddress });
   }
-  return { sessionId: row.session_id, user: row };
+  return { sessionId: row.session_id, user: row, session: row };
 }
 
 /** Deletes the session behind the request's cookie, if any (used before issuing a new one). */

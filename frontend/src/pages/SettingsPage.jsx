@@ -1,10 +1,12 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router';
-import { FileSpreadsheet, LogOut, Monitor, Moon, Sun, Trash2 } from 'lucide-react';
+import { FileSpreadsheet, LogOut, Monitor, Moon, Sun, Trash2, ShieldCheck } from 'lucide-react';
 import {
+  ADMIN_ROLES,
   changePasswordSchema,
   DATE_FORMATS,
   LIMITS,
+  ROLE_LABELS,
   updateProfileSchema,
 } from '@health-tracker/shared';
 import Alert from '../components/ui/Alert.jsx';
@@ -174,6 +176,25 @@ function PreferencesSection() {
   );
 }
 
+/** Entry point to the admin area, shown only to accounts that hold an administrative role. */
+function AdministrationSection() {
+  const { user } = useAuth();
+  if (!ADMIN_ROLES.includes(user.role)) return null;
+  return (
+    <Card title="Administration">
+      <div className={styles.form}>
+        <p className={styles.muted}>
+          You are signed in as {ROLE_LABELS[user.role]}. Administrative actions are recorded in the
+          audit log.
+        </p>
+        <Button variant="secondary" icon={ShieldCheck} className={styles.submit} to="/admin">
+          Open admin dashboard
+        </Button>
+      </div>
+    </Card>
+  );
+}
+
 function DataSection() {
   const toast = useToast();
   const [busy, setBusy] = useState(false);
@@ -300,6 +321,7 @@ export default function SettingsPage() {
         <div className={styles.column}>
           <PasswordSection />
           <DataSection />
+          <AdministrationSection />
           <Card title="Session">
             <div className={styles.actions}>
               <Button variant="secondary" icon={LogOut} onClick={logout}>

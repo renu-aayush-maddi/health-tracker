@@ -15,7 +15,7 @@ export const ORIGIN = config.APP_ORIGIN;
 export const DEFAULT_PASSWORD = 'correct-horse-battery';
 
 export async function resetDatabase() {
-  await pool.query('TRUNCATE users CASCADE');
+  await pool.query('TRUNCATE users, audit_logs, security_events, ip_blocklist CASCADE');
   mailer.outbox.length = 0;
 }
 
@@ -77,3 +77,50 @@ export function latestVerificationCode(email) {
     .find((m) => m.to === email && /verification code/.test(m.subject));
   return message?.text.match(/verification code is: (\d{6})/)?.[1];
 }
+
+/** Registers a verified account and gives it an administrative role. */
+export async function registerAdmin(role = 'admin', overrides = {}) {
+  const account = await registerUser(overrides);
+  await pool.query('UPDATE users SET role = $2 WHERE id = $1', [account.user.id, role]);
+  return { ...account, role };
+}
+
+export async function setStatus(userId, status, reason = null) {
+  await pool.query(
+    'UPDATE users SET status = $2, status_reason = $3, status_changed_at = now() WHERE id = $1',
+    [userId, status, reason],
+  );
+}
+
+/** Adds an explicit permission grant, optionally already expired. */
+export async function grantPermission(userId, permission, { expiresAt = null } = {}) {
+  await pool.query(
+    `INSERT INTO admin_permissions (user_id, permission, expires_at) VALUES ($1, $2, $3)
+     ON CONFLICT (user_id, permission) DO UPDATE SET expires_at = EXCLUDED.expires_at`,
+    [userId, permission, expiresAt],
+  );
+}
+
+export async function blockIp(ip, reason = 'test') {
+  await pool.query(
+    `INSERT INTO ip_blocklist (ip_address, reason) VALUES ($1::inet, $2)
+     ON CONFLICT (ip_address) DO UPDATE SET reason = EXCLUDED.reason, expires_at = NULL`,
+    [ip, reason],
+  );
+}
+
+export const auditRows = async (action) =>
+  (
+    await pool.query(
+      `SELECT * FROM audit_logs ${action ? 'WHERE action = $1' : ''} ORDER BY created_at`,
+      action ? [action] : [],
+    )
+  ).rows;
+
+export const securityRows = async (type) =>
+  (
+    await pool.query(
+      `SELECT * FROM security_events ${type ? 'WHERE event_type = $1' : ''} ORDER BY created_at`,
+      type ? [type] : [],
+    )
+  ).rows;

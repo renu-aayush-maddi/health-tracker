@@ -23,7 +23,8 @@
     "backup": "npm run backup -w backend",
     "backup:list": "npm run backup:list -w backend",
     "backup:fetch": "npm run backup:fetch -w backend --",
-    "backup:decrypt": "npm run backup:decrypt -w backend --"
+    "backup:decrypt": "npm run backup:decrypt -w backend --",
+    "create-admin": "npm run create-admin -w backend --"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",

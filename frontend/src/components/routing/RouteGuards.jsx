@@ -1,4 +1,5 @@
 import { Navigate, Outlet, useLocation } from 'react-router';
+import { ADMIN_ROLES } from '@health-tracker/shared';
 import { useAuth } from '../../context/AuthContext.jsx';
 import FullPageStatus from '../ui/FullPageStatus.jsx';
 
@@ -46,5 +47,24 @@ export function RequireUnverified() {
   let content = <Outlet />;
   if (auth.status === 'unauthenticated') content = <Navigate to="/login" replace />;
   else if (isVerified(auth)) content = <Navigate to={location.state?.from ?? '/'} replace />;
+  return <SessionGate>{content}</SessionGate>;
+}
+
+/**
+ * The administration area. Requires a verified, active account with an administrative role —
+ * and the API independently enforces the same thing on every request, so a user who forces this
+ * route open simply sees errors rather than data.
+ */
+export function RequireAdmin() {
+  const auth = useAuth();
+  const location = useLocation();
+  let content = <Outlet />;
+  if (needsVerification(auth)) {
+    content = <Navigate to="/verify-email" replace state={{ from: location.pathname }} />;
+  } else if (!isVerified(auth)) {
+    content = <Navigate to="/login" replace state={{ from: location.pathname }} />;
+  } else if (!ADMIN_ROLES.includes(auth.user.role)) {
+    content = <Navigate to="/" replace />;
+  }
   return <SessionGate>{content}</SessionGate>;
 }

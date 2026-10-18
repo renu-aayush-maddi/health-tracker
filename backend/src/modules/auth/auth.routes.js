@@ -7,6 +7,7 @@ import {
   resetPasswordSchema,
   verifyEmailSchema,
 } from '@health-tracker/shared';
+import { rejectBlockedIp } from '../../middleware/blockedIp.js';
 import { requireAuth } from '../../middleware/requireAuth.js';
 import { validate } from '../../middleware/validate.js';
 import {
@@ -23,11 +24,18 @@ export const authRouter = Router();
 
 authRouter.post(
   '/register',
+  rejectBlockedIp,
   registerLimiter,
   validate({ body: registerSchema }),
   controller.register,
 );
-authRouter.post('/login', loginLimiter, validate({ body: loginSchema }), controller.login);
+authRouter.post(
+  '/login',
+  rejectBlockedIp,
+  loginLimiter,
+  validate({ body: loginSchema }),
+  controller.login,
+);
 authRouter.post('/logout', controller.logout);
 authRouter.get('/session', requireAuth, controller.getSession);
 authRouter.post(
@@ -39,6 +47,7 @@ authRouter.post(
 );
 authRouter.post(
   '/forgot-password',
+  rejectBlockedIp,
   forgotPasswordIpLimiter,
   forgotPasswordEmailLimiter,
   validate({ body: forgotPasswordSchema }),
@@ -46,6 +55,7 @@ authRouter.post(
 );
 authRouter.post(
   '/reset-password',
+  rejectBlockedIp,
   passwordChangeLimiter,
   validate({ body: resetPasswordSchema }),
   controller.resetPassword,

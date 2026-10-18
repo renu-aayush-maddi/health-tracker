@@ -51,6 +51,13 @@
 
   --color-focus: light-dark(#2f6f68, #7cc2b8);
 
+  /* Chart series. Each mode's steps were chosen separately and validated for colour-vision
+     separation and contrast against that mode's chart surface — dark is not a flip of light. */
+  --chart-1: light-dark(#2b5d96, #4f93d6);
+  --chart-2: light-dark(#b4372f, #d9635c);
+  --chart-grid: light-dark(#e4e1d8, #2e3735);
+  --chart-axis-text: light-dark(#56605e, #a9b3b0);
+
   /* Typography */
   --font-sans:
     system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, 'Noto Sans', sans-serif;

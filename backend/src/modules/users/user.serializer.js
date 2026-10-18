@@ -8,6 +8,8 @@ export function toPublicUser(row) {
     email: row.email,
     preferences: { ...DEFAULT_PREFERENCES, ...row.preferences },
     emailVerified: Boolean(row.email_verified_at),
+    role: row.role ?? 'user',
+    status: row.status ?? 'active',
     createdAt: row.created_at,
   };
 }

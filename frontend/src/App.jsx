@@ -1,5 +1,10 @@
-import { createBrowserRouter, RouterProvider } from 'react-router';
-import { PublicOnly, RequireAuth, RequireUnverified } from './components/routing/RouteGuards.jsx';
+import { createBrowserRouter, Navigate, RouterProvider } from 'react-router';
+import {
+  PublicOnly,
+  RequireAdmin,
+  RequireAuth,
+  RequireUnverified,
+} from './components/routing/RouteGuards.jsx';
 import RouteError from './components/routing/RouteError.jsx';
 import ThemeSync from './components/routing/ThemeSync.jsx';
 import SlowServerNotice from './components/ui/SlowServerNotice.jsx';
@@ -15,6 +20,13 @@ import VerifyEmailPage from './pages/VerifyEmailPage.jsx';
 const page = (load) => () => load().then((module) => ({ Component: module.default }));
 
 const router = createBrowserRouter([
+  {
+    // The static host serves the app's entry file at /index.html, so that address is a common
+    // bookmark or typed URL. It is not a page; send it to the real home route. The auth guards
+    // there then decide between the dashboard and the login screen.
+    path: '/index.html',
+    element: <Navigate to="/" replace />,
+  },
   {
     element: <AuthLayout />,
     errorElement: <RouteError />,
@@ -32,6 +44,55 @@ const router = createBrowserRouter([
       {
         element: <RequireUnverified />,
         children: [{ path: '/verify-email', element: <VerifyEmailPage /> }],
+      },
+    ],
+  },
+  {
+    // The admin area is a separate lazy chunk, so ordinary users never download it.
+    element: <RequireAdmin />,
+    errorElement: <RouteError />,
+    children: [
+      {
+        lazy: () =>
+          import('./layouts/AdminLayout.jsx').then((module) => ({ Component: module.default })),
+        children: [
+          { path: '/admin', lazy: page(() => import('./pages/admin/AdminDashboardPage.jsx')) },
+          { path: '/admin/users', lazy: page(() => import('./pages/admin/AdminUsersPage.jsx')) },
+          {
+            path: '/admin/users/:userId',
+            lazy: page(() => import('./pages/admin/AdminUserDetailPage.jsx')),
+          },
+          {
+            path: '/admin/health-records',
+            lazy: page(() => import('./pages/admin/AdminHealthRecordsPage.jsx')),
+          },
+          {
+            path: '/admin/medicines',
+            lazy: page(() => import('./pages/admin/AdminMedicinesPage.jsx')),
+          },
+          {
+            path: '/admin/security',
+            lazy: page(() => import('./pages/admin/AdminSecurityPage.jsx')),
+          },
+          {
+            path: '/admin/audit-logs',
+            lazy: page(() => import('./pages/admin/AdminAuditLogsPage.jsx')),
+          },
+          {
+            path: '/admin/sessions',
+            lazy: page(() => import('./pages/admin/AdminSessionsPage.jsx')),
+          },
+          {
+            path: '/admin/ip-addresses',
+            lazy: page(() => import('./pages/admin/AdminIpAddressesPage.jsx')),
+          },
+          { path: '/admin/admins', lazy: page(() => import('./pages/admin/AdminAdminsPage.jsx')) },
+          { path: '/admin/system', lazy: page(() => import('./pages/admin/AdminSystemPage.jsx')) },
+          {
+            path: '/admin/reports',
+            lazy: page(() => import('./pages/admin/AdminReportsPage.jsx')),
+          },
+        ],
       },
     ],
   },

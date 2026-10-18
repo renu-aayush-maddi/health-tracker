@@ -1,3 +1,4 @@
+import { STATUS_LABELS, isUsableStatus } from '@health-tracker/shared';
 import { config } from '../../config/env.js';
 import { withTransaction } from '../../db/pool.js';
 import { HttpError, badRequest } from '../../utils/httpErrors.js';
@@ -45,11 +46,27 @@ export async function authenticate({ email, password }) {
   if (needsRehash(user.password_hash)) {
     await users.replacePasswordHash(user.id, await hashPassword(password));
   }
+
+  // A blocked/disabled/suspended account must not receive a session, even with the right
+  // password. The message names the status so the person knows to contact support.
+  if (!isUsableStatus(user.status)) {
+    const label = (STATUS_LABELS[user.status] ?? user.status).toLowerCase();
+    throw new HttpError(
+      403,
+      'ACCOUNT_NOT_ACTIVE',
+      user.status_reason
+        ? `Your account is ${label}. Reason: ${user.status_reason}`
+        : `Your account is ${label}. Please contact support.`,
+    );
+  }
   return user;
 }
 
 /** Verifies the current password, stores the new one, revokes all sessions and issues a fresh one. */
-export async function changePassword({ userId, currentPassword, newPassword, userAgent }, res) {
+export async function changePassword(
+  { userId, currentPassword, newPassword, userAgent, ipAddress },
+  res,
+) {
   const user = await users.findUserWithHashById(userId);
   if (!user || !(await verifyPassword(user.password_hash, currentPassword))) {
     // 400 rather than 401: the session is valid, only the form input is wrong.
@@ -62,7 +79,7 @@ export async function changePassword({ userId, currentPassword, newPassword, use
   await withTransaction(async (client) => {
     await users.updateUserPassword(userId, passwordHash, client);
     await deleteUserSessions(userId, {}, client);
-    await startSession(res, { userId, userAgent }, client);
+    await startSession(res, { userId, userAgent, ipAddress }, client);
   });
 }
 

@@ -125,6 +125,33 @@ Resend works the same way with `MAIL_PROVIDER=resend`, but needs a **domain** yo
 
 At startup the API logs which provider is active and whether the key was accepted (`Brevo API key accepted`), and each send logs how long the provider took. If a send fails, "Resend code" returns a visible error rather than claiming the email is on its way.
 
+## Administration
+
+An admin area at `/admin` for account management, security monitoring and auditing. See
+[docs/ADMIN.md](docs/ADMIN.md) for the full design, permission matrix and limitations.
+
+**Create the first administrator** (no credentials in source; the password is typed at the prompt):
+
+```bash
+npm run create-admin                                   # interactive
+npm run create-admin -- --email you@example.com        # promote an existing account
+```
+
+**Roles.** `USER` (no admin access) · `READ_ONLY_ADMIN` (read platform data, change nothing) ·
+`ADMIN` (manage accounts, sessions and IP blocks) · `SUPER_ADMIN` (plus roles, deletion and
+medical content). Roles are only defaults — the backend checks individual **permissions**, and a
+SUPER_ADMIN can grant extra ones to a specific administrator, optionally with an expiry.
+
+**Privacy.** Admin screens show metadata — record counts, dates, event names — not medical
+content. Opening a health record requires `health_records.read`, shows a warning first, and writes
+an audit entry naming the administrator, the account, the record, the time and the IP. The
+**Reports → Privacy** panel lists which administrators read medical content, so the people with
+access are themselves accountable. Audit and security logs are append-only: the database rejects
+any `UPDATE` or `DELETE`, including from a super admin.
+
+**Blocking** an account refuses sign-in, revokes its sessions immediately and denies API access,
+while keeping all of its health data.
+
 ## Backups
 
 Supabase is the primary store. Two Excel copies of the **text** data exist alongside it (uploaded files themselves aren't included, only their names and tags):

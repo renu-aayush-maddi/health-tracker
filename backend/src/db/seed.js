@@ -8,6 +8,10 @@ import { pool, query } from './pool.js';
 
 export const DEMO_EMAIL = 'demo@example.com';
 export const DEMO_PASSWORD = 'demo-password-123';
+// A super admin for local development and the end-to-end suite. Never created in production:
+// seed() refuses to run there, and the real first admin is made with `npm run create-admin`.
+export const ADMIN_EMAIL = 'admin@example.com';
+export const ADMIN_PASSWORD = 'admin-password-123';
 
 const daysAgo = (n) => {
   const d = new Date();
@@ -156,7 +160,15 @@ export async function seed() {
       })),
     });
   }
+  await query('DELETE FROM users WHERE email = $1', [ADMIN_EMAIL]);
+  await query(
+    `INSERT INTO users (name, email, password_hash, role, email_verified_at)
+     VALUES ($1, $2, $3, 'super_admin', now())`,
+    ['Platform Admin', ADMIN_EMAIL, await hashPassword(ADMIN_PASSWORD)],
+  );
+
   console.log(`Seeded ${EVENTS.length} events for ${DEMO_EMAIL} (password: ${DEMO_PASSWORD})`);
+  console.log(`Seeded super admin ${ADMIN_EMAIL} (password: ${ADMIN_PASSWORD})`);
 }
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {

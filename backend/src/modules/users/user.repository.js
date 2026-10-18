@@ -1,6 +1,7 @@
 import { query } from '../../db/pool.js';
 
-const PUBLIC_COLUMNS = 'id, name, email, preferences, created_at, email_verified_at';
+const PUBLIC_COLUMNS =
+  'id, name, email, preferences, created_at, email_verified_at, role, status, status_reason';
 
 export async function findUserByEmail(email) {
   const { rows } = await query(

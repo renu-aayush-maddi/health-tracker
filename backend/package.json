@@ -14,7 +14,8 @@
     "backup": "node --env-file-if-exists=../.env src/backup/runBackup.js",
     "backup:list": "node --env-file-if-exists=../.env src/backup/cli.js list",
     "backup:fetch": "node --env-file-if-exists=../.env src/backup/cli.js fetch",
-    "backup:decrypt": "node --env-file-if-exists=../.env src/backup/cli.js decrypt"
+    "backup:decrypt": "node --env-file-if-exists=../.env src/backup/cli.js decrypt",
+    "create-admin": "node --env-file-if-exists=../.env src/cli/createAdmin.js"
   },
   "dependencies": {
     "@health-tracker/shared": "^1.0.0",

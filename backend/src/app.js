@@ -13,6 +13,7 @@ import { dashboardRouter } from './modules/dashboard/dashboard.routes.js';
 import { usersRouter } from './modules/users/user.routes.js';
 import { featuresRouter } from './modules/attachments/attachment.features.js';
 import { attachmentsRouter } from './modules/attachments/attachment.routes.js';
+import { adminRouter } from './modules/admin/admin.routes.js';
 
 export function createApp() {
   const app = express();
@@ -46,6 +47,7 @@ export function createApp() {
   api.use('/users', usersRouter);
   api.use('/features', featuresRouter);
   api.use('/attachments', attachmentsRouter);
+  api.use('/admin', adminRouter);
 
   app.use('/api', api);
   app.use(notFoundHandler);
